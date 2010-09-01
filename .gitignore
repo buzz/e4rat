@@ -1,0 +1,9 @@
+.gitignore
+*~
+*.o
+.*.swp
+CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+defrag

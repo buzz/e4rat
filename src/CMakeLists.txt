@@ -1,67 +1,93 @@
-project(defrag)
-
 cmake_minimum_required(VERSION 2.6)
 set(CMAKE_VERBOSE_MAKEFILE              off)
 
-set(${PROJECT_NAME}_MAJOR_VERSION   0)
-set(${PROJECT_NAME}_MINOR_VERSION   0)
-set(${PROJECT_NAME}_PATCH_LEVEL     1)
+# test weather variables from top level directories are missing
+IF( NOT CMAKE_BUILD_TYPE )
+  MESSAGE(FATAL_ERROR "Do not run cmake on subdirectories")
+ENDIF()
 
-set(${PROJECT_NAME}_SOVERSION       0)
-
-set(CMAKE_CXX_FLAGS              "-Wall -ggdb")
-
-set(INSTALL_HEADER_FILES
-        )
-set (${PROJECT_NAME}_SRC 
-        ${${PROJECT_NAME}_SRC}
-        main.c
-    )
-
+set(CMAKE_CXX_FLAGS_GLOBAL       "-Wall -Wno-deprecated -DPROGRAM_NAME=\\\"${PROJECT_NAME}\\\" -DVERSION=\\\"${E4RAT_VERSION}\\\"")
+set(CMAKE_CXX_FLAGS_RELEASE      "${CMAKE_CXX_FLAGS_GLOBAL} -O2")
+set(CMAKE_CXX_FLAGS_DEBUG        "${CMAKE_CXX_FLAGS_GLOBAL} -ggdb -DDEBUG_ENABLED")
 
 SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-SET(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/..)
-SET(BINARY_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/..)
+SET(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 FIND_PACKAGE(ext2fs REQUIRED)
 set(${PROJECT_NAME}_LIBRARIES   ${${PROJECT_NAME}_LIBRARIES}
     ${EXT2FS_LIBRARY})
 
-#
-# Versioning
-#
-#set(${PROJECT_NAME}_FULL_VERSION
-#    ${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}.${${PROJECT_NAME}_PATCH_LEVEL})
-#
-#set_target_properties(${PROJECT_NAME}  PROPERTIES
-#        VERSION ${${PROJECT_NAME}_FULL_VERSION}
-#        SOVERSION ${${PROJECT_NAME}_SOVERSION}
-#        )
+find_package(blkid REQUIRED)
+set(${PROJECT_NAME}_LIBRARIES   ${${PROJECT_NAME}_LIBRARIES}
+    ${BLKID_LIBRARY})
 
-ADD_EXECUTABLE(${PROJECT_NAME} 
-	${${PROJECT_NAME}_SRC}
+find_package(audit REQUIRED)
+set(${PROJECT_NAME}_LIBRARIES   ${${PROJECT_NAME}_LIBRARIES}
+    ${AUDIT_LIBRARY})
+
+find_package(auparse REQUIRED)
+set(${PROJECT_NAME}_LIBRARIES   ${${PROJECT_NAME}_LIBRARIES}
+    ${AUPARSE_LIBRARY})
+
+add_library(${PROJECT_NAME}-base STATIC
+        config.cc
+        logging.cc
+        common.cc
+        fiemap.cc
+        device.cc
     )
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} 
+ADD_EXECUTABLE(${PROJECT_NAME}-collect
+        e4rat-collect.cc
+        fileptr.cc
+        listener.cc
+        eventcatcher.cc
+    )
+
+ADD_EXECUTABLE(${PROJECT_NAME}-preload
+        e4rat-preload.cc
+    )
+
+ADD_EXECUTABLE(${PROJECT_NAME}-realloc
+        e4rat-realloc.cc
+        defrag.cc
+        buddycache.cc
+    )
+
+
+IF(CMAKE_BUILD_TYPE STREQUAL "debug")
+    ADD_EXECUTABLE(fileoffset
+        fileoffset.cc
+    )
+        
+    TARGET_LINK_LIBRARIES(fileoffset
+        ${${PROJECT_NAME}_LIBRARIES}
+        ${PROJECT_NAME}-base
+    )
+ENDIF(CMAKE_BUILD_TYPE STREQUAL "debug")
+
+TARGET_LINK_LIBRARIES(${PROJECT_NAME}-collect
     ${${PROJECT_NAME}_LIBRARIES}
+    ${PROJECT_NAME}-base
     )
-set_target_properties(${PROJECT_NAME}
-	PROPERTIES
-	LINK_INTERFACE_LIBRARIES "")
-	
-FILE(GLOB IdlFiles "*.h")
-INSTALL(FILES ${IdlFiles} DESTINATION "include/${PROJECT_NAME}")
+TARGET_LINK_LIBRARIES(${PROJECT_NAME}-preload
+    ${${PROJECT_NAME}_LIBRARIES}
+    ${PROJECT_NAME}-base
+    )
+TARGET_LINK_LIBRARIES(${PROJECT_NAME}-realloc
+    ${${PROJECT_NAME}_LIBRARIES}
+    ${PROJECT_NAME}-base
+    )
 
-foreach(filename ${INSTALL_HEADER_FILES})
-    get_filename_component(filename_no_extension ${filename} NAME_WE)
-    file(WRITE ${filename_no_extension}
-        "/* \n"
-        " * This file is part of the CSource Config Library\n"
-        " * and was automatically generated.\n"
-        " */\n"
-        "\n"
-        "#include \""
-        ${filename}
-        "\"\n"
-        )
-    INSTALL(FILES ${filename_no_extension} DESTINATION "include/${PROJECT_NAME}")
-endforeach(filename)
+INSTALL(TARGETS ${PROJECT_NAME}-collect
+                ${PROJECT_NAME}-preload
+                ${PROJECT_NAME}-realloc
+                ${PROJECT_NAME}-base
+        RUNTIME DESTINATION "sbin"
+        LIBRARY DESTINATION "lib"
+        ARCHIVE DESTINATION "lib")
+
+INSTALL(CODE "MAKE_DIRECTORY(\"/var/lib/${PROJECT_NAME}\")")
+
+INSTALL(FILES e4rat.conf
+        DESTINATION "/etc")
