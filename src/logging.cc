@@ -52,7 +52,7 @@ void Logging::log2target(LogLevel level, const char* msg)
         syslog((level/2)+2, msg);
     else
     {
-        FILE* file = fopen(target.c_str(), "wa");
+        FILE* file = fopen(target.c_str(), "a");
         if(file)
         {
             fprintf(file, "[ %s ] %s\n", Config::get<std::string>("tool_name").c_str(), msg);
@@ -76,6 +76,8 @@ Logging::Logging()
 
 Logging::~Logging()
 {
+    if(queue.size())
+        fprintf(stderr, "Discard %d unwritten log messages.\n", queue.size());
 }
 
 void Logging::setLogLevel(int l)
