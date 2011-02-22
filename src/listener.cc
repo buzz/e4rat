@@ -319,7 +319,7 @@ void AuditListener::parseSyscallEvent(auparse_state_t* au, boost::shared_ptr<Aud
     int syscall;
     
     //notice: you have to read audit message items in the correct order
-    syscall = atoi(parseField(au, "syscall").c_str());
+    syscall = strtol(parseField(au, "syscall").c_str(), NULL, 10);
     switch(syscall)
     {
         case __NR_open:                        
@@ -345,10 +345,11 @@ void AuditListener::parseSyscallEvent(auparse_state_t* au, boost::shared_ptr<Aud
     
     if(auditEvent->type == Open || auditEvent->type == OpenAt)
     {
-        int flags = atoi(parseField(au, "a1").c_str());
+        int flags = strtol(parseField(au, "a1").c_str(), NULL, 10);
         
         if(!(  flags & O_WRONLY
-            || flags & O_RDWR ))
+            || flags & O_RDWR
+            || flags & O_CREAT))
             auditEvent->readOnly = true;
     }
     
