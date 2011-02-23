@@ -108,8 +108,7 @@ void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
             FilePtr file = FilePtr(event->dev, event->ino, event->path);
             if(file.unique() || file.isValid())
             {
-                info("File was modified: \t%s", 
-                                  event->path.string().c_str());
+                info("File was modified: \t%s", event->path.string().c_str());
                 file.setInvalid();
             }
             if(file.unique())
@@ -147,41 +146,6 @@ void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
             
         default:
         {
-            /*
-             * ignore non regular files
-             */
-            struct stat st;
-            if(0 > stat(event->path.string().c_str(), &st))
-            {
-                error("stat: %s: %s", event->path.string().c_str(), strerror(errno));
-                return;
-            }
-            
-            // sometimes linux audit sends wrong inode and dev numbers
-            if(st.st_ino != event->ino)
-            {
-                debug("Inode Number differ! %s i_event: %d, d_event: %d - i_real: %d, d_real: %d", event->path.string().c_str(), event->ino, event->dev, st.st_ino, st.st_dev);
-                return;
-            }
-            
-            if(!S_ISREG(st.st_mode))
-            {
-                const char* type;
-                
-                if(S_ISDIR(st.st_mode))
-                    type = "directory";
-                else if(S_ISLNK(st.st_mode))
-                    type = "soft link";
-                else if(S_ISCHR(st.st_mode))
-                    type = "character device";
-                else if(S_ISBLK(st.st_mode))
-                    type = "block device";
-                else
-                    type = "unknown file type";
-                
-                info("Refuse %s: \t%s", type, event->path.string().c_str());
-                break;
-            }
             FilePtr file;
             file = FilePtr(event->dev, event->ino, getPath2RegularFile(event->path));
             if(file.unique())

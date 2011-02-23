@@ -485,7 +485,8 @@ void AuditListener::exec()
     struct audit_reply reply;
     auparse_state_t *au;
     boost::shared_ptr<AuditEvent> auditEvent(new AuditEvent);
-
+    struct stat st;
+    
     while(1)
     {
         waitForEvent(&reply);
@@ -509,11 +510,30 @@ void AuditListener::exec()
                 if(auditEvent->path.empty())
                     break;
 
-                if(!ignorePath(auditEvent->path)
-                   && !ignoreDevice(auditEvent->dev)
-                   && checkFileSystemType(auditEvent->path))
-                    eventParsed(auditEvent);
+                if(ignorePath(auditEvent->path)
+                   || ignoreDevice(auditEvent->dev)
+                   || !checkFileSystemType(auditEvent->path))
+                    break;
 
+                if(0 > stat(auditEvent->path.string().c_str(), &st))
+                {
+                    error("stat: %s: %s", auditEvent->path.string().c_str(), strerror(errno));
+                    break;
+                }
+                // sometimes linux audit sends wrong inode and dev numbers
+                if(st.st_ino != auditEvent->ino)
+                {
+                    debug("Inode Number differ! %s i_event: %d, d_event: %d - i_real: %d, d_real: %d",
+                          auditEvent->path.string().c_str(), auditEvent->ino, auditEvent->dev, st.st_ino, st.st_dev);
+                    break;
+                }
+                if(!S_ISREG(st.st_mode))
+                {
+                    debug("Ignore non regular file");
+                    break;
+                }
+
+                eventParsed(auditEvent);
                 break;
             // event is an syscall event
             case AUDIT_SYSCALL:
