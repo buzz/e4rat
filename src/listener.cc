@@ -515,7 +515,7 @@ void AuditListener::exec()
                    || !checkFileSystemType(auditEvent->path))
                     break;
 
-                if(0 > stat(auditEvent->path.string().c_str(), &st))
+                if(0 > lstat(auditEvent->path.string().c_str(), &st))
                 {
                     warn("stat: %s: %s", auditEvent->path.string().c_str(), strerror(errno));
                     break;
