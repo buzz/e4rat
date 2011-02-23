@@ -517,19 +517,19 @@ void AuditListener::exec()
 
                 if(0 > stat(auditEvent->path.string().c_str(), &st))
                 {
-                    error("stat: %s: %s", auditEvent->path.string().c_str(), strerror(errno));
+                    warn("stat: %s: %s", auditEvent->path.string().c_str(), strerror(errno));
                     break;
                 }
                 // sometimes linux audit sends wrong inode and dev numbers
                 if(st.st_ino != auditEvent->ino)
                 {
-                    debug("Inode Number differ! %s i_event: %d, d_event: %d - i_real: %d, d_real: %d",
+                    warn("Inode Number differ! %s i_event: %d, d_event: %d - i_real: %d, d_real: %d",
                           auditEvent->path.string().c_str(), auditEvent->ino, auditEvent->dev, st.st_ino, st.st_dev);
                     break;
                 }
                 if(!S_ISREG(st.st_mode))
                 {
-                    debug("Ignore non regular file");
+                    warn("Ignore non regular file");
                     break;
                 }
 
