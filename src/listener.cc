@@ -148,8 +148,11 @@ void AuditListener::insertAuditRules()
 #ifdef __i386__
     audit_rule_syscallbyname_data(auditRuleData, "truncate64");
 #endif
-    audit_rule_syscallbyname_data(auditRuleData, "creat"); 
-
+    audit_rule_syscallbyname_data(auditRuleData, "creat");
+    // treat as truncate
+    audit_rule_syscallbyname_data(auditRuleData, "unlink");
+    audit_rule_syscallbyname_data(auditRuleData, "link");
+    audit_rule_syscallbyname_data(auditRuleData, "rename");
     /*
      * restrict syscalls to regular files
      */
@@ -348,6 +351,9 @@ void AuditListener::parseSyscallEvent(auparse_state_t* au, boost::shared_ptr<Aud
             auditEvent->type = Execve;   break;
         case __NR_openat:
             auditEvent->type = OpenAt;   break;
+        case __NR_unlink:
+        case __NR_link:
+        case __NR_rename:
         case __NR_truncate:
 #ifdef __i386__
         case __NR_truncate64:
@@ -515,28 +521,32 @@ void AuditListener::exec()
                    || !checkFileSystemType(auditEvent->path))
                     break;
 
-                if(0 > lstat(auditEvent->path.string().c_str(), &st))
+                if(0 > stat(auditEvent->path.string().c_str(), &st))
                 {
-                    warn("stat: %s: %s", auditEvent->path.string().c_str(), strerror(errno));
+                    // in the mean time the file got unlinked or renamed
+                    // treat as Truncate to add ino to the ignored list
+                    debug("stat: %s: %s", auditEvent->path.string().c_str(), strerror(errno));
+                    auditEvent->type = Truncate;
+                }
+                else if(!S_ISREG(st.st_mode))
+                {
+                    debug("Ignore non regular file");
                     break;
                 }
-                // sometimes linux audit sends wrong inode and dev numbers
-                if(st.st_ino != auditEvent->ino)
+                else if(st.st_ino != auditEvent->ino)
                 {
-                    warn("syscall %d", auditEvent->type);
-                    warn("exe     %s", auditEvent->exe.string().c_str());
-                    warn("Inode Number differ! %s i_event: %u, d_event: %u - i_real: %u, d_real: %u",
-                         auditEvent->path.string().c_str(),
-                         auditEvent->ino, (__u32)auditEvent->dev,
-                         st.st_ino, (__u32)st.st_dev);
-                    break;
+                    // path exists but inode does not fit to the event
+                    // this could also happen when a file got renamed
+                    // this probably results of using the glib function: g_file_set_content
+                    debug("syscall %d", auditEvent->type);
+                    debug("exe     %s", auditEvent->exe.string().c_str());
+                    debug("Inode Number differ! %s i_event: %u, d_event: %u - i_real: %u, d_real: %u",
+                          auditEvent->path.string().c_str(),
+                          auditEvent->ino, (__u32)auditEvent->dev,
+                          st.st_ino, (__u32)st.st_dev);
+                    auditEvent->type = Truncate;
                 }
-                if(!S_ISREG(st.st_mode))
-                {
-                    warn("Ignore non regular file");
-                    break;
-                }
-
+                
                 eventParsed(auditEvent);
                 break;
             // event is an syscall event
