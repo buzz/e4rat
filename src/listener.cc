@@ -149,6 +149,7 @@ void AuditListener::insertAuditRules()
     audit_rule_syscallbyname_data(auditRuleData, "truncate64");
 #endif
     audit_rule_syscallbyname_data(auditRuleData, "creat");
+    audit_rule_syscallbyname_data(auditRuleData, "mknod");
     // treat as truncate
     audit_rule_syscallbyname_data(auditRuleData, "unlink");
     audit_rule_syscallbyname_data(auditRuleData, "link");
@@ -360,6 +361,7 @@ void AuditListener::parseSyscallEvent(auparse_state_t* au, boost::shared_ptr<Aud
 #endif
             auditEvent->type = Truncate; break;
         case __NR_creat:
+        case __NR_mknod:
             auditEvent->type = Creat;   break;          
         default:
             debug("unknown syscall: %d", syscall);
