@@ -97,7 +97,7 @@ class AuditListener : public InterruptAble
         bool ignoreDevice(dev_t dev);
         bool checkFileSystemType(fs::path& p);
 
-        struct audit_rule_data auditRuleData;
+        struct audit_rule_data* auditRuleData;
         int auditFlags;
         int auditAction;                
         int audit_fd;

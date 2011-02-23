@@ -50,7 +50,8 @@ AuditEvent::AuditEvent()
 
 AuditListener::AuditListener()
 {
-    memset(&auditRuleData, 0, sizeof(struct audit_rule_data));
+    auditRuleData =  (struct audit_rule_data*)malloc(sizeof( struct audit_rule_data));
+    memset(auditRuleData, 0, sizeof(struct audit_rule_data));
     auditFlags = AUDIT_FILTER_EXIT;
     auditAction = AUDIT_ALWAYS;
     audit_fd = -1;
@@ -59,6 +60,7 @@ AuditListener::AuditListener()
 
 AuditListener::~AuditListener()
 {
+    free(auditRuleData);
 }
 
 void AuditListener::excludePath(std::string path)
@@ -133,18 +135,36 @@ void AuditListener::insertAuditRules()
     else
         removeAuditRules();
 
-    memset(&auditRuleData, '\0', sizeof(struct audit_rule_data));
+    memset(auditRuleData, '\0', sizeof(struct audit_rule_data));
 
-    audit_rule_syscallbyname_data(&auditRuleData, "execve");
-    audit_rule_syscallbyname_data(&auditRuleData, "open");
-    audit_rule_syscallbyname_data(&auditRuleData, "openat");
-    audit_rule_syscallbyname_data(&auditRuleData, "truncate");
+
+    /*
+     * Insert Syscall rules
+     */
+    audit_rule_syscallbyname_data(auditRuleData, "execve");
+    audit_rule_syscallbyname_data(auditRuleData, "open");
+    audit_rule_syscallbyname_data(auditRuleData, "openat");
+    audit_rule_syscallbyname_data(auditRuleData, "truncate");
 #ifdef __i386__
-    audit_rule_syscallbyname_data(&auditRuleData, "truncate64");
+    audit_rule_syscallbyname_data(auditRuleData, "truncate64");
 #endif
-    audit_rule_syscallbyname_data(&auditRuleData, "creat"); 
+    audit_rule_syscallbyname_data(auditRuleData, "creat"); 
 
-    if ( 0 >= audit_add_rule_data(audit_fd, &auditRuleData, AUDIT_FILTER_EXIT, action))
+    /*
+     * restrict syscalls to regular files
+     */
+    char filetype[128];
+    strcpy(filetype, "filetype=file");
+    audit_rule_fieldpair_data(&auditRuleData, filetype, AUDIT_FILTER_EXIT);
+
+    /*
+     * restrict to only successful syscalls events
+     */
+    strcpy(filetype, "success=1");
+    audit_rule_fieldpair_data(&auditRuleData, filetype, AUDIT_FILTER_EXIT);
+
+    
+    if ( 0 >= audit_add_rule_data(audit_fd, auditRuleData, AUDIT_FILTER_EXIT, action))
         error("Cannot insert rules: %s", strerror(errno));
 
     if(0 > audit_set_pid(audit_fd, getpid(), WAIT_YES))
@@ -165,7 +185,7 @@ void AuditListener::removeAuditRules()
         return;
 
     if ( 0 > audit_delete_rule_data(audit_fd,
-                                    &auditRuleData,
+                                    auditRuleData,
                                     AUDIT_FILTER_EXIT,
                                     AUDIT_ALWAYS))
     {
