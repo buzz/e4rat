@@ -523,8 +523,12 @@ void AuditListener::exec()
                 // sometimes linux audit sends wrong inode and dev numbers
                 if(st.st_ino != auditEvent->ino)
                 {
-                    warn("Inode Number differ! %s i_event: %d, d_event: %d - i_real: %d, d_real: %d",
-                          auditEvent->path.string().c_str(), auditEvent->ino, auditEvent->dev, st.st_ino, st.st_dev);
+                    warn("syscall %d", auditEvent->type);
+                    warn("exe     %s", auditEvent->exe.string().c_str());
+                    warn("Inode Number differ! %s i_event: %u, d_event: %u - i_real: %u, d_real: %u",
+                         auditEvent->path.string().c_str(),
+                         auditEvent->ino, (__u32)auditEvent->dev,
+                         st.st_ino, (__u32)st.st_dev);
                     break;
                 }
                 if(!S_ISREG(st.st_mode))
