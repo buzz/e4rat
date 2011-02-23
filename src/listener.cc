@@ -305,10 +305,10 @@ void AuditListener::parsePathEvent(auparse_state_t* au, boost::shared_ptr<AuditE
     std::string dev_buf = parseField(au, "dev");
     size_t found = dev_buf.find(":");
     if(found == std::string::npos)
-        return;
-    
-    auditEvent->dev = makedev(strtol(dev_buf.substr(0, found).c_str(), NULL, 16),
-                              strtol(dev_buf.substr(found+1).c_str(),NULL, 16));
+        auditEvent->dev = 0;
+    else
+        auditEvent->dev = makedev(strtol(dev_buf.substr(0, found).c_str(), NULL, 16),
+                                  strtol(dev_buf.substr(found+1).c_str(),NULL, 16));
 }
 
 /*
@@ -345,7 +345,7 @@ void AuditListener::parseSyscallEvent(auparse_state_t* au, boost::shared_ptr<Aud
     
     if(auditEvent->type == Open || auditEvent->type == OpenAt)
     {
-        int flags = strtol(parseField(au, "a1").c_str(), NULL, 10);
+        int flags = strtol(parseField(au, "a1").c_str(), NULL, 16);
         
         if(!(  flags & O_WRONLY
             || flags & O_RDWR
@@ -469,8 +469,9 @@ void AuditListener::exec()
     while(1)
     {
         waitForEvent(&reply);
-        au = initAuParse(&reply);
 
+        reply.msg.data[reply.len] = '\0';
+        au = initAuParse(&reply);
         debug("%d: %*s", reply.type, reply.len, reply.msg.data);
         
         switch(reply.type)

@@ -140,7 +140,7 @@ void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
                 FilePtr file = FilePtr(event->exe);
                 if(file.unique())
                 {
-                    info("Insert executeable: \t%s", event->exe.string().c_str());
+                    info("Insert executable: \t%s", event->exe.string().c_str());
                     insert(file);
                 }
             }
@@ -159,8 +159,11 @@ void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
             
             // sometimes linux audit sends wrong inode and dev numbers
             if(st.st_ino != event->ino)
+            {
+                debug("Inode Number differ! %s i_event: %d, d_event: %d - i_real: %d, d_real: %d", event->path.string().c_str(), event->ino, event->dev, st.st_ino, st.st_dev);
                 return;
-
+            }
+            
             if(!S_ISREG(st.st_mode))
             {
                 const char* type;
