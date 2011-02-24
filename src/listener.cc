@@ -157,6 +157,7 @@ void AuditListener::insertAuditRules()
     /*
      * restrict syscalls to regular files
      */
+#if 0
     char filetype[128];
     strcpy(filetype, "filetype=file");
     audit_rule_fieldpair_data(&auditRuleData, filetype, AUDIT_FILTER_EXIT);
@@ -166,7 +167,7 @@ void AuditListener::insertAuditRules()
      */
     strcpy(filetype, "success=1");
     audit_rule_fieldpair_data(&auditRuleData, filetype, AUDIT_FILTER_EXIT);
-
+#endif
     
     if ( 0 >= audit_add_rule_data(audit_fd, auditRuleData, AUDIT_FILTER_EXIT, action))
         error("Cannot insert rules: %s", strerror(errno));
