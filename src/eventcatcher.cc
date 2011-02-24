@@ -106,7 +106,7 @@ void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
         case Truncate:
         {
             FilePtr file = FilePtr(event->dev, event->ino, event->path);
-            if(file.unique() || file.isValid())
+            if(file.isValid())
             {
                 info("File was modified: \t%s", event->path.string().c_str());
                 file.setInvalid();
@@ -121,7 +121,7 @@ void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
             if(!event->readOnly)
             {
                 FilePtr file = FilePtr(event->dev, event->ino, event->path);
-                if(file.unique() || file.isValid())
+                if(file.isValid())
                 {
                     info("Opened writable: \t%s", 
                                     event->path.string().c_str());
