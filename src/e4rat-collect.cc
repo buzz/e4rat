@@ -361,7 +361,7 @@ int main(int argc, char* argv[])
                     notice("Execute `%s' ...", Config::get<std::string>("init").c_str());
                     execv(Config::get<std::string>("init").c_str(), argv);
                 }
-
+                sleep(2);
                 exit(0);
          }
     }

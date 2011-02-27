@@ -66,7 +66,7 @@ void printUsage()
 "                                    Please avoid other filesystem activities.\n"
 "    -t --use-tld                    Take advantage of orlov's top-level direc-\n"
 "                                    tory spreading algorithm. This typically\n"
-"                                    leads to small holes between the files.\\n"
+"                                    leads to small holes between the files.\n\n"
         ;
 }
 
