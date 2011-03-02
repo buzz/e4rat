@@ -44,8 +44,8 @@ struct OrigDonorPair
 class Defrag : public InterruptAble
 {
         typedef std::vector<fs::path> filelist_t;
-        
     protected:
+        Defrag();
         bool doesKernelSupportPA(Device&);
         bool isPAenabled(fs::path& mountPoint, char* device_name);
         void createDonorFiles_PA(
@@ -62,8 +62,15 @@ class Defrag : public InterruptAble
                         Device& device,
                         std::vector<OrigDonorPair>& defragPair );
 
-        std::vector<OrigDonorPair> checkFilesAttributes(filelist_t&);
-        void defragRelatedFiles(Device& device, filelist_t& files);
+        std::vector<OrigDonorPair>
+        checkFilesAttributes(filelist_t&);
+        
+        void defragRelatedFiles(Device& device, std::vector<OrigDonorPair>& files);
+
+        int invalid_file_type;
+        int not_writable;
+        int not_extent_based;
+        int empty_files;
 };
 
 class Optimizer : public Defrag

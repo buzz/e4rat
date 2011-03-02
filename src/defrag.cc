@@ -108,6 +108,13 @@ std::string renameTempFile(fs::path orig, fs::path dir)
     return path;
 }
 
+Defrag::Defrag()
+{
+    invalid_file_type = 0;
+    not_writable      = 0;
+    not_extent_based  = 0;
+    empty_files       = 0;
+}
 Optimizer::Optimizer()
 {
 }
@@ -156,20 +163,20 @@ bool checkFileSystem(Device& device)
         std::string dev_name = device.getDevicePath();
         if(dev_name.at(0) != '/')
             dev_name = device.getMountPoint().string();
-        warn("%s is not an ext4 filesystem.", dev_name.c_str());
+        info("%s is not an ext4 filesystem.", dev_name.c_str());
         return false;
     }
 
     if(!device.open())
     {
-        warn("Couldn't find valid filesystem superblock on %s.",
+        info("Couldn't find valid filesystem superblock on %s.",
              device.getDevicePath().c_str());
         return false;
     }
 
     if(!device.hasExtentFeature())
     {
-        warn("Ext4 filesystem on %s has not extent feature enabled.",
+        info("Ext4 filesystem on %s has not extent feature enabled.",
              device.getDevicePath().c_str());
         return false;
     }
@@ -177,35 +184,72 @@ bool checkFileSystem(Device& device)
     return true;
 }
 
+
 /*
  * This is the main-entry-point for relevant file defragmentation.
  */
 void Optimizer::relatedFiles(std::vector<fs::path>& files)
 {
     try {
-        struct stat st;
-        std::map<dev_t, std::vector<fs::path> > spererated_into_devices;
+        typedef std::pair<dev_t, std::vector<fs::path> >       files_per_dev_pair_t;
+        typedef std::pair<Device, std::vector<OrigDonorPair> > filemap_pair_t;
+        
+        std::map<dev_t, std::vector<fs::path> > files_per_dev;
+        std::map<Device, std::vector<OrigDonorPair> > filemap;
+        
+        int files_unavailable     = 0;
+        int wrong_filesystem_type = 0;
+        
+         BOOST_FOREACH(fs::path& file, files)
+         {
+             struct stat st;
+             if(-1 == stat(file.string().c_str(), &st))
+             {
+                 info("Cannot open file: %s: %s", file.string().c_str(), strerror(errno));
+                 files_unavailable++;
+             }
+             else
+                 files_per_dev[st.st_dev].push_back(file);
+         }
 
-        BOOST_FOREACH(fs::path p, files)
-        {
-            if(0 > lstat(p.string().c_str(), &st))
-            {
-                notice("Cannot access file: %s: %s",
-                       p.string().c_str(), strerror(errno));
-                continue;
-            }
+         BOOST_FOREACH(files_per_dev_pair_t dev_it, files_per_dev)
+         {
+             Device device(dev_it.first);
+             if(checkFileSystem(device))
+                 filemap.insert(filemap_pair_t(device, checkFilesAttributes(dev_it.second)));
+             else
+                 wrong_filesystem_type += dev_it.second.size();
+         }
 
-            spererated_into_devices[st.st_dev].push_back(p);
-        }
+         if(files_unavailable)
+             notice("%*d/%d file(s) are not available",
+                    (int)(log10(files.size())+1), files_unavailable, files.size());
+         if(wrong_filesystem_type)
+             notice("%*d/%d file(s) not on an ext4 filesystem",
+                    (int)(log10(files.size())+1), wrong_filesystem_type, files.size());
+         if(invalid_file_type)
+             notice("%*d/%d file(s) has invalid file type.",
+                    (int)(log10(files.size())+1), invalid_file_type , files.size());
+         if(not_writable)
+             notice("%*d/%d file(s) are presently not writable.",
+                    (int)(log10(files.size())+1), not_writable , files.size());
+         if(not_extent_based)
+             notice("%*d/%d file(s) cannot set inode extent flag.",
+                    (int)(log10(files.size())+1), not_extent_based , files.size());
+         if(empty_files)
+             notice("%*d/%d file(s) has no blocks.",
+                    (int)(log10(files.size())+1), empty_files , files.size());
 
-        typedef std::pair<dev_t, std::vector<fs::path> > dev_it;
-        BOOST_FOREACH(dev_it job, spererated_into_devices)
-        {
-            Device device(job.second.front());
-
-            if(checkFileSystem(device))
-                defragRelatedFiles(device, job.second);
-        }
+         
+         BOOST_FOREACH(filemap_pair_t map, filemap)
+         {
+             notice("Process %d file(s) on device %s (mount-point: %s)",
+                    map.second.size(),
+                    map.first.getDevicePath().c_str(),
+                    map.first.getMountPoint().string().c_str());
+             
+             defragRelatedFiles(map.first, map.second);
+         }
     }
     catch(UserInterrupt& e)
     {
@@ -219,18 +263,14 @@ void Optimizer::relatedFiles(std::vector<fs::path>& files)
  * If file is invalid std::runtime_error is thrown,
  * otherwise return file's block count
  */
-std::vector<OrigDonorPair> Defrag::checkFilesAttributes(filelist_t& i_files)
+std::vector<OrigDonorPair> Defrag::checkFilesAttributes(std::vector<fs::path>& i_files)
 {
     struct stat st;
     int flags;
     OrigDonorPair odp;
+    
     std::vector<OrigDonorPair> checked_files;
 
-    int invalid_file_type = 0;
-    int not_writable      = 0;
-    int not_extent_based  = 0;
-    int empty_files       = 0;
-    
     BOOST_FOREACH(fs::path& file, i_files)
     {
         const char* path = file.string().c_str();
@@ -315,18 +355,7 @@ cont:
         close(fd);
     }
 
-    if(invalid_file_type)
-        notice("%*d/%d file(s) has invalid file type.",
-               (int)(log10(i_files.size())+1), invalid_file_type , i_files.size());
-    if(not_writable)
-        notice("%*d/%d file(s) are presently not writable.",
-               (int)(log10(i_files.size())+1), not_writable , i_files.size());
-    if(not_extent_based)
-        notice("%*d/%d file(s) cannot convert to be extent based.",
-               (int)(log10(i_files.size())+1), not_extent_based , i_files.size());
-    if(empty_files)
-        notice("%*d/%d file(s) are empty.",
-               (int)(log10(i_files.size())+1), empty_files , i_files.size());
+
     
     return checked_files;
 }
@@ -463,7 +492,7 @@ Extent findFreeSpace(Device device, __u64 phint, __u64 len)
 void Defrag::createDonorFiles_PA(Device& device, 
                                  std::vector<OrigDonorPair>& files)
 {
-    notice("Create donor files using mode: pre-allocation");
+    notice("Using defrag mode: pre-allocation");
     int fd;
     /*
      * calculate total amount of blocks
@@ -529,7 +558,7 @@ void Defrag::createDonorFiles_LocalityGroup(Device& device,
     __s64 old_mb_stream_req = -1;
     __s64 old_mb_group_prealloc = -1;
 
-    notice("Create donor files using mode: locality group");
+    notice("Using defrag mode: locality group");
 
     try {
         old_mb_stream_req     = device.getTuningParameter("mb_stream_req");
@@ -627,7 +656,7 @@ void Defrag::createDonorFiles_TLD(Device& device,
     __s64 old_mb_stream_req = -1;
     fs::path tld;
 
-    notice("Create donor files using mode: top level directory");
+    notice("Using defrag mode: top level directory");
     
     try {
     
@@ -751,35 +780,21 @@ void Defrag::createDonorFiles(Device& device, std::vector<OrigDonorPair>& defrag
  * 5. fadvice to free donor file from page cache
  * 6. Delete donor file
  */ 
-void Defrag::defragRelatedFiles(Device& device, filelist_t& files)
+void Defrag::defragRelatedFiles(Device& device, std::vector<OrigDonorPair>& files)
 {
     int fcnt = 0;
     int orig_fd;
     int donor_fd;
 
-    std::vector<OrigDonorPair> defragPair;
     try {
-        notice("Defrag related files on device %s (mount-point: %s)",
-               device.getDevicePath().c_str(),
-               device.getMountPoint().string().c_str());
 
-        notice("Check file attributes ...");
-        defragPair = checkFilesAttributes(files);
+        createDonorFiles(device, files);
 
-        if(!defragPair.size())
-        {
-            notice("There aren't any valid files.");
-            return;
-        }
-
-        createDonorFiles(device, defragPair);
-
-        notice("Start defragging ...");
-        BOOST_FOREACH(OrigDonorPair& odp, defragPair)
+        BOOST_FOREACH(OrigDonorPair& odp, files)
         {
             interruptionPoint();
-            info("[ %*d/%d ] %*llu block(s)    %s", (int)(log10(defragPair.size())+1), ++fcnt, 
-                 defragPair.size(), 
+            info("[ %*d/%d ] %*llu block(s)    %s", (int)(log10(files.size())+1), ++fcnt, 
+                 files.size(), 
                  6, odp.blocks,
                  odp.origPath.string().c_str());
             
@@ -833,7 +848,7 @@ void Defrag::defragRelatedFiles(Device& device, filelist_t& files)
     
     catch(std::exception& e)
     {
-        BOOST_FOREACH(OrigDonorPair& odp, defragPair)
+        BOOST_FOREACH(OrigDonorPair& odp, files)
             if(-1 == remove(odp.donorPath.string().c_str()))
                 if(errno != ENOENT)
                     error("Cannot remove donor file: %s: %s",

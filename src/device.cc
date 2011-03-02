@@ -414,3 +414,8 @@ __u32 Device::getLogGroupsPerFlex()
 {
     return get()->fs->super->s_log_groups_per_flex;
 }
+
+bool Device::operator<(const Device& other) const
+{
+    return get()->devno < other.get()->devno;
+}

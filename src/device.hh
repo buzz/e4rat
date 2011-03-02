@@ -103,7 +103,7 @@ class Device: private boost::shared_ptr<DevicePrivate>
                          int   donor_fd,
                          __u64 logical,  //logical block offset
                          __u64 len);     //block count to be moved
-
+        bool operator<(const Device&) const;
     private:
         void parseMtab();
         void openSysFsExt4File(
