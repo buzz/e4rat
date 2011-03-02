@@ -472,9 +472,6 @@ void Defrag::createDonorFiles_PA(Device& device,
     BOOST_FOREACH(OrigDonorPair& odp, files)
         blk_count += odp.blocks;
 
-    info("Total blocks to be moved: %u ( %.2f MB )", 
-         blk_count, (float)blk_count*4/1024);
-
 
     Extent free_space = findFreeSpace(device, 0, blk_count);
     BOOST_FOREACH(OrigDonorPair& odp, files)
@@ -482,7 +479,7 @@ void Defrag::createDonorFiles_PA(Device& device,
         odp.donorPath = createTempFile(device.getMountPoint(), 0);
         fd = open(odp.donorPath.string().c_str(), O_WRONLY, 0700);
         if(0 > fd)
-            throw std::runtime_error(std::string("cannot open donor file: ")
+            throw std::runtime_error(std::string("Cannot open donor file: ")
                                  + odp.donorPath.string() + strerror(errno));
 
         __u64 file_offset = 0;
@@ -569,7 +566,7 @@ void Defrag::createDonorFiles_LocalityGroup(Device& device,
          * Furthermore multi-block allocator does not normalize the block
          * request.
          */
-        device.setTuningParameter("mb_stream_req", highest_blk_cnt);
+        device.setTuningParameter("mb_stream_req", highest_blk_cnt + 1);
 
         /*
          * TODO: fill up previous locality group on an effective way
