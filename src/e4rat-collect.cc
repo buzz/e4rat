@@ -52,8 +52,9 @@ void scanOpenFiles(std::vector<FilePtr>& list)
     ino_t ino;
     int major;
     int minor;
-    
-    info("Scan open files by calling lsof");
+
+    size_t size_early = list.size();
+    debug("Scan open files by calling lsof");
     
     FILE* pFile = popen("lsof -w / | awk '{print $6,$8,$9 }'", "r");
     if(NULL == pFile)
@@ -72,9 +73,33 @@ void scanOpenFiles(std::vector<FilePtr>& list)
         if(file.unique())
             list.push_back(file);
     }
-    info("%d open files scanned", list.size());
+    info("%*d open files", 8, list.size() - size_early);
     pclose(pFile);
 }
+
+
+void excludeFileLists(std::vector<const char*>& files, std::vector<FilePtr>& list)
+{
+    BOOST_FOREACH(const char* fname, files)
+    {
+        std::vector<std::string> ex_files = matchPath(fname);
+        BOOST_FOREACH(std::string filename, ex_files)
+        {
+            FILE* file = fopen(filename.c_str(), "r");
+            if(file)
+            {
+                size_t size_early = list.size();
+                parseInputStream(file, list);
+                info("%*d parsed from %s", 8, list.size() - size_early, filename.c_str());
+                fclose(file);
+            }
+            else
+                std::cerr << "Cannot open file list: "
+                          << filename << ": " << strerror(errno) << std::endl;
+        }
+    }
+}
+
 
 void printUsage()
 {
@@ -118,11 +143,17 @@ int main(int argc, char* argv[])
     FILE* outStream      = NULL;
 
     std::deque<FilePtr> filelist;
+    std::vector<const char*> exclude_filenames ;
 
-    std::vector<FilePtr> openFileList;
+    std::vector<FilePtr> excludeList ;
+
     ScanFsAccess project;
     Listener listener;
 
+    // excluding file list only affect only if process id is not 1
+    if(0 == access("/var/lib/"PROGRAM_NAME"/startup", F_OK))
+        exclude_filenames.push_back("/var/lib/"PROGRAM_NAME"/startup");
+    
     static struct option long_options[] =
         {
             {"verbose",        no_argument,       0, 'v'},
@@ -134,7 +165,7 @@ int main(int argc, char* argv[])
             {"device",         required_argument, 0, 'd'},
             {"exclude-path",   required_argument, 0, 'P'},
             {"path",           required_argument, 0, 'p'},
-            {"exclude-list",   required_argument, 0, 'L'},
+            {"exclude-list",   optional_argument, 0, 'L'},
             {"watch-ext4",     required_argument, 0, 'e'},
             {"exclude-of",     required_argument, 0, 'O'},
             {"execute",        required_argument, 0, 'x'},
@@ -175,21 +206,7 @@ int main(int argc, char* argv[])
                 loglevel = atoi(optarg);
                 break;
             case 'L':
-            {
-                std::vector<std::string> ex_files = matchPath(optarg);
-                BOOST_FOREACH(std::string filename, ex_files)
-                {
-                    FILE* file = fopen(filename.c_str(), "r");
-                    if(file)
-                    {
-                        std::vector<FilePtr>* exclude_files = new std::vector<FilePtr>;
-                        parseInputStream(file, *exclude_files);
-                    }
-                    else
-                        std::cerr << "Cannot open exclude file list at: "
-                                  << optarg << ": " << strerror(errno) << std::endl;
-                }
-            }
+                exclude_filenames.push_back(optarg);
                 break;
             case 'o':
                 outPath = optarg;
@@ -240,6 +257,8 @@ int main(int argc, char* argv[])
                     Config::set<bool>("ext4_only", true);
                 else if(optopt == 'O')
                     Config::set<bool>("exclude_open_files", true);
+                else if(optopt == 'L')
+                    exclude_filenames.clear();
                 else
                 {
                     fprintf(stderr, "Option requires an argument -- '%c'\n", optopt);
@@ -279,15 +298,28 @@ int main(int argc, char* argv[])
     }
     else
     {
+        if(true == Config::get<bool>("exclude_open_files") || exclude_filenames.size())
+        {
+            info("Generating exclude file list ...");
+            try {
+                if(true == Config::get<bool>("exclude_open_files"))
+                    scanOpenFiles(excludeList);
+                excludeFileLists(exclude_filenames, excludeList);
+            }
+            catch(std::exception& e)
+            {
+                std::cout << e.what() << std::endl;
+                goto err2;
+            }
+            info("Total number of excluded files: %d", excludeList.size());
+        }
+        
         if(!createPidFile(PID_FILE))
         {
             std::cerr << "It seems that e4rat-collect is already running.\n";
             std::cerr << "Remove pid file " << PID_FILE << " to unlock.\n";
             exit(1);
         }
-
-        if(true == Config::get<bool>("exclude_open_files"))
-            scanOpenFiles(openFileList);
     
         if(outStream == stdout)
             logger.redirectStdout2Stderr(true);
