@@ -91,7 +91,13 @@ select true or false whether e4rat-collect should ignore already opened files be
 
 =head2 Scan Thunderbird and a locally running Imap daemon
 
-e4rat-collect thunderbird imapd -o /var/lib/e4rat/thunderbird
+=head4 Run collector as root:
+
+    ~# sudo e4rat-collect thunderbird imapd
+
+=head4 Once collector is running execute thunderbird as a normal user:
+
+    ~# thunderbird
 
 =head2 Scan boot process:
 
