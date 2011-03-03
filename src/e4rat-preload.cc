@@ -124,7 +124,7 @@ void preloadFiles()
 void printUsage()
 {
     std::cout <<
-"Usage: " PROGRAM_NAME "-preload [option(s)] [...]\n"
+"Usage: " PROGRAM_NAME "-preload [ option(s) ] file(s)\n"
 "\n"
 "    -V --version                    print version and exits\n"
 "    -h --help                       print help and exits\n"

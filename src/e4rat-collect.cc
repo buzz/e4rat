@@ -104,7 +104,7 @@ void excludeFileLists(std::vector<const char*>& files, std::vector<FilePtr>& lis
 void printUsage()
 {
     std::cout <<
-"Usage: " PROGRAM_NAME "-collect [option(s)] [application(s)]\n"
+"Usage: " PROGRAM_NAME "-collect [ option(s) ] [ application names ]\n"
 "\n"
 "    -V --version                    print version and exit\n"
 "    -h --help                       print help and exit\n"
@@ -116,7 +116,7 @@ void printUsage()
 "    -x --execute <command>          quit after command has finished\n"
 "    -o --output [file]              dump generated file list to file\n"
 "    -d --device <dev>               watch a specific device\n"
-"                                    [example: /dev/sda?]\n"
+"                                    [example: /dev/sda1]\n"
 "    -D --exclude-device <dev>       exclude device\n"
 "    -p --path <path>                restrict watch on path [example: '*/bin/*']\n"
 "    -P --exclude-path <path>        exclude filesystem path\n"

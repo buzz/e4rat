@@ -52,7 +52,7 @@ class FileInfo : public boost::filesystem::path
 void printUsage()
 {
     std::cout <<
-"Usage: " PROGRAM_NAME "-realloc files(s)\n"
+"Usage: " PROGRAM_NAME "-realloc [ option(s) ] [ mode ] files(s)\n"
 "\n"
 "  OPTIONS:\n"
 "    -V --version                    print version and exit\n"

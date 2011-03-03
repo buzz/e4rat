@@ -6,7 +6,7 @@ e4rat-collect - Generate a list of relevant files by monitoring applications
 
 =head1 SYNOPSIS
 
-B<e4rat-collect>  B<[> option B<]>  B<[> I<application name> B<]>
+B<e4rat-collect>  B<[> option(s) B<]>  B<[> application names B<]>
 
 =head1 DESCRIPTION
 
@@ -51,7 +51,7 @@ kill already running e4rat-collect process
 
 =item -x --execute <command>
 
-collect while executing command. e4rat-collect stops running after <command> terminates. Be aware that <command> gets executed with root privleges.
+collect while executing command. e4rat-collect stops running after <command> terminates. Be aware that <command> gets executed with root privileges.
 
 =item -o --output [file]
 

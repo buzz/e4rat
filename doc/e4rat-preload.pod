@@ -6,7 +6,7 @@ e4rat-prealod - Preload files into memory
 
 =head1 SYNOPSIS
 
-B<e4rat-preload>  B<[> options B<]>  B<[> file(s) B<]>
+B<e4rat-preload>  B<[> option(s) B<]>  file(s)
 
 =head1 DESCRIPTION
 
