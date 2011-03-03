@@ -49,7 +49,7 @@ kill already running e4rat-collect process
 
 =item -x --execute <command>
 
-collect while executing command. e4rat-collect stops running after <command> terminates.
+collect while executing command. e4rat-collect stops running after <command> terminates. Be aware that <command> gets executed with root privleges.
 
 =item -o --output [file]
 
