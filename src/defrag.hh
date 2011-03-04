@@ -46,7 +46,7 @@ class Defrag : public InterruptAble
         typedef std::vector<fs::path> filelist_t;
     protected:
         Defrag();
-        bool doesKernelSupportPA(Device&);
+        bool doesKernelSupportPA(Device);
         bool isPAenabled(fs::path& mountPoint, char* device_name);
         void createDonorFiles_PA(
                         Device& device,

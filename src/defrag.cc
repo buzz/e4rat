@@ -129,7 +129,7 @@ Optimizer::Optimizer()
  * Return: true  on success
  *         otherwise  false
  */
-bool Defrag::doesKernelSupportPA(Device& device)
+bool Defrag::doesKernelSupportPA(Device device)
 {
     int ret = true;
     int fd;
@@ -199,57 +199,97 @@ void Optimizer::relatedFiles(std::vector<fs::path>& files)
         
         int files_unavailable     = 0;
         int wrong_filesystem_type = 0;
+
+        /*
+         * Sort files per devices
+         */
+        BOOST_FOREACH(fs::path& file, files)
+        {
+            struct stat st;
+            if(-1 == stat(file.string().c_str(), &st))
+            {
+                info("Cannot open file: %s: %s", file.string().c_str(), strerror(errno));
+                files_unavailable++;
+            }
+            else
+                files_per_dev[st.st_dev].push_back(file);
+        }
+
+        /*
+         * Check file attributes
+         */
+        BOOST_FOREACH(files_per_dev_pair_t dev_it, files_per_dev)
+        {
+            Device device(dev_it.first);
+            if(checkFileSystem(device))
+                filemap.insert(filemap_pair_t(device, checkFilesAttributes(dev_it.second)));
+            else
+                wrong_filesystem_type += dev_it.second.size();
+        }
         
-         BOOST_FOREACH(fs::path& file, files)
-         {
-             struct stat st;
-             if(-1 == stat(file.string().c_str(), &st))
-             {
-                 info("Cannot open file: %s: %s", file.string().c_str(), strerror(errno));
-                 files_unavailable++;
-             }
-             else
-                 files_per_dev[st.st_dev].push_back(file);
-         }
-
-         BOOST_FOREACH(files_per_dev_pair_t dev_it, files_per_dev)
-         {
-             Device device(dev_it.first);
-             if(checkFileSystem(device))
-                 filemap.insert(filemap_pair_t(device, checkFilesAttributes(dev_it.second)));
-             else
-                 wrong_filesystem_type += dev_it.second.size();
-         }
-
-         if(files_unavailable)
-             notice("%*d/%d file(s) are not available",
-                    (int)(log10(files.size())+1), files_unavailable, files.size());
-         if(wrong_filesystem_type)
-             notice("%*d/%d file(s) not on an ext4 filesystem",
-                    (int)(log10(files.size())+1), wrong_filesystem_type, files.size());
-         if(invalid_file_type)
-             notice("%*d/%d file(s) has invalid file type.",
-                    (int)(log10(files.size())+1), invalid_file_type , files.size());
-         if(not_writable)
-             notice("%*d/%d file(s) are presently not writable.",
-                    (int)(log10(files.size())+1), not_writable , files.size());
-         if(not_extent_based)
-             notice("%*d/%d file(s) cannot set inode extent flag.",
-                    (int)(log10(files.size())+1), not_extent_based , files.size());
-         if(empty_files)
-             notice("%*d/%d file(s) has no blocks.",
-                    (int)(log10(files.size())+1), empty_files , files.size());
-
-         
-         BOOST_FOREACH(filemap_pair_t map, filemap)
-         {
-             notice("Process %d file(s) on device %s (mount-point: %s)",
-                    map.second.size(),
-                    map.first.getDevicePath().c_str(),
-                    map.first.getMountPoint().string().c_str());
-             
-             defragRelatedFiles(map.first, map.second);
-         }
+        /*
+         * Display file statistics 
+         */
+        if(files_unavailable)
+            notice("%*d/%d file(s) are not available",
+                   (int)(log10(files.size())+1), files_unavailable, files.size());
+        if(wrong_filesystem_type)
+            notice("%*d/%d file(s) not on an ext4 filesystem",
+                   (int)(log10(files.size())+1), wrong_filesystem_type, files.size());
+        if(invalid_file_type)
+            notice("%*d/%d file(s) has invalid file type.",
+                   (int)(log10(files.size())+1), invalid_file_type , files.size());
+        if(not_writable)
+            notice("%*d/%d file(s) are presently not writable.",
+                   (int)(log10(files.size())+1), not_writable , files.size());
+        if(not_extent_based)
+            notice("%*d/%d file(s) cannot set inode extent flag.",
+                   (int)(log10(files.size())+1), not_extent_based , files.size());
+        if(empty_files)
+            notice("%*d/%d file(s) has no blocks.",
+                   (int)(log10(files.size())+1), empty_files , files.size());
+        
+        if(filemap.empty())
+            return;
+        
+        /*
+         * Apply defrag mode
+         */
+        if("auto" == Config::get<std::string>("defrag_mode"))
+        {
+            if(doesKernelSupportPA(filemap.begin()->first))
+                Config::set<std::string>("defrag_mode", "pa");
+            else
+                Config::set<std::string>("defrag_mode", "locality_group");
+        }
+        else if("pa" == Config::get<std::string>("defrag_mode"))
+            if(!doesKernelSupportPA(filemap.begin()->first))
+                throw std::logic_error("Kernel does not support pre-allocation");
+        
+        std::string mode = Config::get<std::string>("defrag_mode");
+        if(mode == "pa")
+            mode = "pre-allocation";
+        else if(mode == "locality_group")
+            mode = "locality group";
+        else if(mode == "tld")
+            mode = "top level directory";
+        else
+            throw std::runtime_error(std::string("Unknown defrag mode: ") + mode);
+        
+        notice("Defrag mode: %s", mode.c_str());
+        
+        /*
+         * Let's rock!
+         */
+        BOOST_FOREACH(filemap_pair_t map, filemap)
+        {
+            notice("Process %d file(s) on device %s (mount-point: %s)",
+                   map.second.size(),
+                   map.first.getDevicePath().c_str(),
+                   map.first.getMountPoint().string().c_str());
+            
+            defragRelatedFiles(map.first, map.second);
+        }
     }
     catch(UserInterrupt& e)
     {
@@ -492,7 +532,6 @@ Extent findFreeSpace(Device device, __u64 phint, __u64 len)
 void Defrag::createDonorFiles_PA(Device& device, 
                                  std::vector<OrigDonorPair>& files)
 {
-    notice("Using defrag mode: pre-allocation");
     int fd;
     /*
      * calculate total amount of blocks
@@ -557,8 +596,6 @@ void Defrag::createDonorFiles_LocalityGroup(Device& device,
 {
     __s64 old_mb_stream_req = -1;
     __s64 old_mb_group_prealloc = -1;
-
-    notice("Using defrag mode: locality group");
 
     try {
         old_mb_stream_req     = device.getTuningParameter("mb_stream_req");
@@ -656,8 +693,6 @@ void Defrag::createDonorFiles_TLD(Device& device,
     __s64 old_mb_stream_req = -1;
     fs::path tld;
 
-    notice("Using defrag mode: top level directory");
-    
     try {
     
         // create new top level directory
@@ -741,26 +776,14 @@ void Defrag::createDonorFiles(Device& device, std::vector<OrigDonorPair>& defrag
      */
     std::string mode = Config::get<std::string>("defrag_mode");
 
-    if(mode == "auto")
-    {
-        if(doesKernelSupportPA(device))
-            createDonorFiles_PA(device, defragPair);
-        else
-            createDonorFiles_LocalityGroup(device, defragPair);
-    }
-    else if(mode == "pa")
-    {
-        if(doesKernelSupportPA(device))
-            createDonorFiles_PA(device, defragPair);
-        else
-            throw std::logic_error(std::string("Kernel does not support pre-allocation on device "
-                                                 + device.getDevicePath()));
-    }
+    if(mode == "pa")
+        createDonorFiles_PA(device, defragPair);
     else if(mode == "tld")
         createDonorFiles_TLD(device, defragPair);
     else if(mode == "locality_group")
         createDonorFiles_LocalityGroup(device, defragPair);
-
+    else
+        throw std::logic_error(std::string("Unknown defrag mode: ") + mode);
     /*
      * reset priority
      */
