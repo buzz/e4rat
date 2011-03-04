@@ -73,7 +73,7 @@ Once you have successfully built the source code install e4rat as root:
 If you are running a Debian based Linux you can also install e4rat by
 generating a Debian package:
     make package
-    dpkg -i e4rat-<version>-release.deb
+    dpkg -i e4rat-<version>-<arch>-release.deb
 
 
 AUTHORS

@@ -6,7 +6,7 @@ e4rat-collect - Generate a list of relevant files by monitoring applications
 
 =head1 SYNOPSIS
 
-B<e4rat-collect>  B<[> option(s) B<]>  B<[> application names B<]>
+B<e4rat-collect>  B<[> option(s) B<]>  B<[> application name(s) B<]>
 
 =head1 DESCRIPTION
 

@@ -104,7 +104,7 @@ void excludeFileLists(std::vector<const char*>& files, std::vector<FilePtr>& lis
 void printUsage()
 {
     std::cout <<
-"Usage: " PROGRAM_NAME "-collect [ option(s) ] [ application names ]\n"
+"Usage: " PROGRAM_NAME "-collect [ option(s) ] [ application name(s) ]\n"
 "\n"
 "    -V --version                    print version and exit\n"
 "    -h --help                       print help and exit\n"
