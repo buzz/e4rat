@@ -13,7 +13,9 @@ B<e4rat-collect>  B<[> option B<]>  B<[> I<application name> B<]>
 e4rat-collect listens to the Linux audit socket to monitor filesystem activities and generates a list of relevant files retaining their access order. 
 Temporary files or files opened with write access, like log-files, are excluded automatically.
 
-You can either monitor applications or the entire operating system. If an I<application name> is supplied, the processes to monitor are selected according to their process name, which is usually the name of the running executable and shown by the ps(1) command. Paths are removed from the process names. In addition, the collector follows child processes, which allows to monitor shell scripts correctly.
+You can either monitor applications or the entire operating system. If an I<application name> is supplied, the processes to monitor are selected according to their process name, which is usually the name of the running executable and shown by the ps(1) command. Paths are removed from the process names. The application you specify are just monitored and does not get executed. To execute a command see I<--execute>.
+
+In addition, the collector follows child processes, which allows to monitor shell scripts correctly.
 
 To stop scanning process press STR-C or run `e4rat-collect --stop'. Unless otherwise stated, the generated file list is written to './e4rat-collect.log'.
 
