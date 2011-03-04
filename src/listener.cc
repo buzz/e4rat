@@ -112,15 +112,9 @@ void AuditListener::watchFileSystemType(long t)
     watch_fs_types.insert(t);
 }
 
-/* Rule flags - Rules can be applied to following filter set.
- *   AUDIT_FILTER_USER       0x00     Apply rule to user-generated messages 
- *   AUDIT_FILTER_TASK       0x01     Apply rule at task creation (not syscall) 
- *   AUDIT_FILTER_ENTRY      0x02     Apply rule at syscall entry 
- *   AUDIT_FILTER_WATCH      0x03     Apply rule to file system watches 
- *   AUDIT_FILTER_EXIT       0x04     Apply rule at syscall exit 
- *   AUDIT_FILTER_TYPE       0x05     Apply rule at audit_log_start
- * 
- * Action is either never or always
+/*
+ * Apply audit rules to AUDIT_FILTER_EXIT filter.
+ * Monitor all syscalls initialize or perfrom file accesses.  
  */
 void AuditListener::insertAuditRules()
 {
@@ -139,7 +133,7 @@ void AuditListener::insertAuditRules()
 
 
     /*
-     * Insert Syscall rules
+     * Apply Syscall rules
      */
     audit_rule_syscallbyname_data(auditRuleData, "execve");
     audit_rule_syscallbyname_data(auditRuleData, "open");
@@ -150,24 +144,24 @@ void AuditListener::insertAuditRules()
 #endif
     audit_rule_syscallbyname_data(auditRuleData, "creat");
     audit_rule_syscallbyname_data(auditRuleData, "mknod");
-    // treat as truncate
-    audit_rule_syscallbyname_data(auditRuleData, "unlink");
-    audit_rule_syscallbyname_data(auditRuleData, "link");
-    audit_rule_syscallbyname_data(auditRuleData, "rename");
-    /*
-     * restrict syscalls to regular files
-     */
-#if 0
-    char filetype[128];
-    strcpy(filetype, "filetype=file");
-    audit_rule_fieldpair_data(&auditRuleData, filetype, AUDIT_FILTER_EXIT);
 
     /*
-     * restrict to only successful syscalls events
+     * Restrict file access to regular files
+     */
+    char filetype[128];
+#if 0
+    /*
+     * TODO: filetype=file works in most cases but there is a stupid pid file
+     *       that's creation does not get logged. Don't know why.
+     */ 
+    strcpy(filetype, "filetype=file");
+    audit_rule_fieldpair_data(&auditRuleData, filetype, AUDIT_FILTER_EXIT);
+#endif
+    /*
+     * Restrict to successful syscall events
      */
     strcpy(filetype, "success=1");
     audit_rule_fieldpair_data(&auditRuleData, filetype, AUDIT_FILTER_EXIT);
-#endif
     
     if ( 0 >= audit_add_rule_data(audit_fd, auditRuleData, AUDIT_FILTER_EXIT, action))
         error("Cannot insert rules: %s", strerror(errno));
