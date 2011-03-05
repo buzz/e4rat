@@ -40,10 +40,51 @@
 #include <semaphore.h>
 #include <sys/mman.h>
 #include <sys/prctl.h>
+#include <sys/wait.h>
+#include <pwd.h>
 
 #include <boost/foreach.hpp>
 
 #define PID_FILE "/dev/.e4rat-collect.pid"
+
+/*
+ * Execute a command as user
+ */
+int system_u(const char* user, const char* command)
+{
+    int retval = -1;
+    struct passwd* pw;
+    
+    pid_t pid = fork();
+    switch(pid)
+    {
+        case -1:
+            error("Fork failed: %s", strerror(errno)); break;
+        case 0: //child
+            if(user)
+            {
+                //reset errno to indicate error
+                errno = 0;
+                pw = getpwnam(user);
+                if(pw == NULL)
+                {
+                    if(errno)
+                        error("Cannot receive user id: %s", strerror(errno));
+                    else
+                        error("Unknown username %s", user);
+                    exit(1);
+                }
+                setenv("HOME", pw->pw_dir, 1);
+                setuid(pw->pw_uid);
+                setgid(pw->pw_gid);
+            }
+            
+            execl("/bin/sh", "/bin/sh", "-c", command, NULL);
+        default:
+            waitpid(pid, &retval, 0);
+    }
+    return retval;
+}
 
 void scanOpenFiles(std::vector<FilePtr>& list)
 {
@@ -114,6 +155,7 @@ void printUsage()
 "\n"
 "    -k --stop                       kill running collector\n"
 "    -x --execute <command>          quit after command has finished\n"
+"    -u --user <username>            execute command as user\n"
 "    -o --output [file]              dump generated file list to file\n"
 "    -d --device <dev>               watch a specific device\n"
 "                                    [example: /dev/sda1]\n"
@@ -139,6 +181,7 @@ int main(int argc, char* argv[])
     int verbose  = Config::get<int>("verbose");
 
     const char* execute  = NULL;
+    const char* username = NULL;
     const char* outPath  = NULL;
     FILE* outStream      = NULL;
 
@@ -169,6 +212,7 @@ int main(int argc, char* argv[])
             {"watch-ext4",     required_argument, 0, 'e'},
             {"exclude-of",     required_argument, 0, 'O'},
             {"execute",        required_argument, 0, 'x'},
+            {"user",           required_argument, 0, 'u'},
             {"output",         required_argument, 0, 'o'},
             {"stop",           no_argument,       0, 'k'},
             {0, 0, 0, 0}
@@ -177,7 +221,7 @@ int main(int argc, char* argv[])
     int c;
     int option_index = 0;
     opterr = 0;
-    while ((c = getopt_long (argc, argv, "hVvql:o:D:d:P:p:L:e:O:x:k", long_options, &option_index)) != EOF)
+    while ((c = getopt_long (argc, argv, "hVvql:o:D:d:P:p:L:e:O:x:ku:", long_options, &option_index)) != EOF)
     {
         // parse optional arguments
         if(optarg != NULL && optarg[0] == '-')
@@ -242,6 +286,9 @@ int main(int argc, char* argv[])
             case 'x':
                 execute = optarg;
                 break;
+            case 'u':
+                username = optarg;
+                break;
             case 'k':
             {
                 pid_t pid = readPidFile(PID_FILE);
@@ -249,7 +296,6 @@ int main(int argc, char* argv[])
                     kill(pid, SIGINT);
                 return 0;
             }
-            //case ':': break;
             case '?':
                 if (optopt == 'o') // optional parameter for output is missing
                     outStream = stdout;
@@ -261,13 +307,17 @@ int main(int argc, char* argv[])
                     exclude_filenames.clear();
                 else
                 {
-                    fprintf(stderr, "Option requires an argument -- '%c'\n", optopt);
+                    for(int i=0; long_options[i].val; i++)
+                        if(long_options[i].val == optopt)
+                        {
+                            fprintf(stderr, "Option requires an argument -- '%c'\n", optopt);
+                            exit(1);
+                        }
+                    fprintf(stderr, "Unrecognised option --  '%c'\n", optopt);
+                    
                     return -1;
                 }
                 break;
-            default:
-                std::cerr << "Unrecognised option: " << optopt << std::endl;
-                goto err1;
         }
     }
 
@@ -386,14 +436,14 @@ int main(int argc, char* argv[])
                 if(execute)
                 {
                     notice("Execute `%s' ...", execute);
-                    system(execute);
+                    system_u(username, execute);
                 }
                 else
                 {
                     notice("Execute `%s' ...", Config::get<std::string>("init").c_str());
                     execv(Config::get<std::string>("init").c_str(), argv);
                 }
-                sleep(2);
+                sleep(1);
                 exit(0);
          }
     }

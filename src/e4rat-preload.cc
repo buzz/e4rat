@@ -209,13 +209,17 @@ int main(int argc, char* argv[])
                     outStream = stdout;
                 else
                 {
-                    fprintf(stderr, "Option requires an argument -- '%c'\n", optopt);
+                    for(int i=0; long_options[i].val; i++)
+                        if(long_options[i].val == optopt)
+                        {
+                            fprintf(stderr, "Option requires an argument -- '%c'\n", optopt);
+                            exit(1);
+                        }
+                    fprintf(stderr, "Unrecognised option --  '%c'\n", optopt);
+                    
                     return -1;
                 }
                 break;
-            default:
-                std::cerr << "Unrecognised option: " << optopt << std::endl;
-                goto out;
         }
     }
 

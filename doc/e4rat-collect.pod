@@ -51,7 +51,11 @@ kill already running e4rat-collect process
 
 =item -x --execute <command>
 
-collect while executing command. e4rat-collect stops running after <command> terminates. Be aware that <command> gets executed with root privileges.
+collect while executing command. e4rat-collect stops running after <command> terminates. Be aware that <command> gets executed with root privileges if no username is specified. See --user.
+
+=item -u --user <username>
+
+specify username the command gets executed. See --execute.
 
 =item -o --output [file]
 
@@ -98,6 +102,10 @@ select true or false whether e4rat-collect should ignore already opened files be
 =head4 Once collector is running execute thunderbird as a normal user:
 
     ~# thunderbird
+
+=head4 Alternatively combine it to one call
+
+    ~# sudo e4rat-collect thunderbird imapd --execute 'thunderbird' --user `whoami`
 
 =head2 Scan boot process:
 
