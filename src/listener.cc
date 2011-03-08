@@ -83,7 +83,12 @@ void AuditListener::watchPath(std::string path)
 void AuditListener::excludeDevice(std::string wildcard)
 {
     struct stat st;
-    BOOST_FOREACH(std::string d, matchPath(wildcard))
+    std::vector<std::string> matches = matchPath(wildcard);
+
+    if(matches.empty())
+        error("%s: no such file or directory", wildcard.c_str());
+    
+    BOOST_FOREACH(std::string d, matches)
     {
         if( 0 > stat(d.c_str(), &st))
             continue;
@@ -94,7 +99,13 @@ void AuditListener::excludeDevice(std::string wildcard)
 void AuditListener::watchDevice(std::string wildcard)
 {
     struct stat st;
-    BOOST_FOREACH(std::string d, matchPath(wildcard))
+
+    std::vector<std::string> matches = matchPath(wildcard);
+
+    if(matches.empty())
+        error("%s: no such file or directory", wildcard.c_str());
+    
+    BOOST_FOREACH(std::string d, matches)
     {
         if( 0 > stat(d.c_str(), &st))
             continue;

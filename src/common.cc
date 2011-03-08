@@ -143,7 +143,7 @@ const boost::regex path2regex(std::string path)
  * return list of paths match filesearch filter
  * filesearch string may consist of simple wildcards:
  *    VALID:   /dev/?da*
- *    INVALID: * /bin/ *   (I inserted spaces to avoid and of comment)
+ *    INVALID: * /bin/ *   (inserted spaces to avoid and of comment)
  */
 std::vector<std::string> matchPath( const std::string & filesearch )
 {
