@@ -88,8 +88,18 @@ void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
         if(observe_apps.find(event->comm) != observe_apps.end())
             observe_pids.insert(event->pid);
 
-
+#if 0
         // follow process id's
+        if(observe_pids.find(event->pid) == observe_pids.end())
+        {
+            if(event->type != Fork)
+                return;
+            if(observe_pids.find(event->ppid) == observe_pids.end())
+                return;
+            observe_pids.insert(event->exit);
+        }
+#endif
+#if 0
         if(observe_pids.find(event->pid) == observe_pids.end())
         {
             if(observe_pids.find(event->ppid) == observe_pids.end())
@@ -97,11 +107,15 @@ void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
             else
                 observe_pids.insert(event->pid);
         }
+#endif
     }
     debug("syscall: %d RO: %d", event->type, event->readOnly);
     
     switch(event->type)
     {
+        case Fork:
+            observe_pids.insert(event->exit); 
+            break;
         case Creat:
         case Truncate:
         {

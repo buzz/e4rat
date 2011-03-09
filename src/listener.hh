@@ -38,6 +38,7 @@ enum AuditEventType
     Execve,
     Truncate,
     Creat,
+    Fork,
 };
 
 // AuditEvent is an structure emitted by eventParsed() signal.
@@ -54,6 +55,7 @@ class AuditEvent
         fs::path cwd;
         ino_t ino;
         dev_t dev;
+        int  exit;
         bool readOnly;
         bool successful;
 };

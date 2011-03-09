@@ -155,7 +155,9 @@ void AuditListener::insertAuditRules()
 #endif
     audit_rule_syscallbyname_data(auditRuleData, "creat");
     audit_rule_syscallbyname_data(auditRuleData, "mknod");
-
+    audit_rule_syscallbyname_data(auditRuleData, "fork");
+    audit_rule_syscallbyname_data(auditRuleData, "vfork");
+    audit_rule_syscallbyname_data(auditRuleData, "clone");
     /*
      * Restrict file access to regular files
      */
@@ -368,7 +370,11 @@ void AuditListener::parseSyscallEvent(auparse_state_t* au, boost::shared_ptr<Aud
             auditEvent->type = Truncate; break;
         case __NR_creat:
         case __NR_mknod:
-            auditEvent->type = Creat;   break;          
+            auditEvent->type = Creat;   break;
+        case __NR_fork:
+        case __NR_vfork:
+        case __NR_clone:
+            auditEvent->type = Fork; break;
         default:
             auditEvent->type = Unknown;
             debug("unknown syscall: %d", syscall);
@@ -378,6 +384,8 @@ void AuditListener::parseSyscallEvent(auparse_state_t* au, boost::shared_ptr<Aud
     if("yes" == parseField(au, "success"))
         auditEvent->successful = true;
     
+    if(auditEvent->type == Fork)
+        auditEvent->exit = strtoll(parseField(au, "exit").c_str(), NULL, 10);
     
     if(auditEvent->type == Open || auditEvent->type == OpenAt)
     {
