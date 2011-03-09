@@ -370,7 +370,9 @@ void AuditListener::parseSyscallEvent(auparse_state_t* au, boost::shared_ptr<Aud
         case __NR_mknod:
             auditEvent->type = Creat;   break;          
         default:
+            auditEvent->type = Unknown;
             debug("unknown syscall: %d", syscall);
+            return;
     }
     
     if("yes" == parseField(au, "success"))
@@ -513,10 +515,15 @@ void AuditListener::exec()
         {
             // change working directory
             case AUDIT_CWD:
+                if(auditEvent->type == Unknown)
+                    break;
                 parseCwdEvent(au, auditEvent);
                 break;
             // event refers to file
             case AUDIT_PATH:
+                if(auditEvent->type == Unknown)
+                    break;
+                
                 parsePathEvent(au,auditEvent);
 
                 if(!auditEvent->successful)

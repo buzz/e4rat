@@ -32,6 +32,7 @@ typedef struct opaque auparse_state_t;
 // All known events emitted by AuditListener
 enum AuditEventType
 {
+    Unknown,
     Open,
     OpenAt,
     Execve,
