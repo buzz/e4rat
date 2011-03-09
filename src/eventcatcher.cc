@@ -85,9 +85,12 @@ void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
     // does this event apply to a process name we are watching?
     if(!observe_apps.empty())
     {
-        if(observe_apps.find(event->comm) != observe_apps.end())
-            observe_pids.insert(event->pid);
-
+        if(observe_pids.find(event->pid) == observe_pids.end())
+	{
+            if(observe_apps.find(event->comm) == observe_apps.end())
+	        return;
+	    observe_pids.insert(event->pid);
+	}
 #if 0
         // follow process id's
         if(observe_pids.find(event->pid) == observe_pids.end())
