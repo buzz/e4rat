@@ -69,6 +69,8 @@ fs::path ScanFsAccess::getPath2RegularFile(fs::path& path)
     
 void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
 {
+  if(event->type == Fork)
+  debug("Fork\n");
     // Since Linux set audit filter AUDT_FILTER_ENTRY as deprecated, there is no way
     // to monitor exit() syscall events.
     // Cause we identify processes by its process id, we have to check whether 
@@ -87,8 +89,13 @@ void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
     {
         if(observe_pids.find(event->pid) == observe_pids.end())
 	{
+	  debug("unknown pid %d", event->pid);
             if(observe_apps.find(event->comm) == observe_apps.end())
+	      {
+		debug("unknown comm %s", event->comm.c_str());
 	        return;
+	      }
+	    debug("comm found: insert pid %d", event->pid);
 	    observe_pids.insert(event->pid);
 	}
 #if 0
@@ -117,6 +124,7 @@ void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
     switch(event->type)
     {
         case Fork:
+	  debug("\ninsert pid %d\n", event->exit);
             observe_pids.insert(event->exit); 
             break;
         case Creat:

@@ -536,6 +536,7 @@ void AuditListener::exec()
 
                 if(!auditEvent->successful)
                     break;
+
                 if(auditEvent->path.empty())
                     break;
 
@@ -569,12 +570,14 @@ void AuditListener::exec()
                           st.st_ino, (__u32)st.st_dev);
                     auditEvent->type = Truncate;
                 }
-                
+
                 eventParsed(auditEvent);
                 break;
             // event is an syscall event
             case AUDIT_SYSCALL:
                 parseSyscallEvent(au,auditEvent);
+		if(auditEvent->type == Fork)
+		  eventParsed(auditEvent);
                 break;
             // end of multi record event
             case AUDIT_EOE:
