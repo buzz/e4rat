@@ -76,10 +76,10 @@ void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
     // Cause we identify processes by its process id, we have to check whether 
     // a process exists and another process got the same process id like the one
     // watched before.
-    if(event->type == Execve)
+    if(event->type == Fork)
     {
         std::set<pid_t>::iterator it;
-        it = observe_pids.find(event->pid);
+        it = observe_pids.find(event->exit);
         if(it != observe_pids.end())
             observe_pids.erase(it);
     }
@@ -96,7 +96,11 @@ void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
 	        return;
 	      }
 	    debug("comm found: insert pid %d", event->pid);
-	    observe_pids.insert(event->pid);
+	    std::pair<std::set<pid_t>::iterator, bool> ret = observe_pids.insert(event->pid);
+		if(ret.second == false)
+		debug("Fehler beim einfuegen!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		else
+		debug("eingefuegt");
 	}
 #if 0
         // follow process id's
@@ -124,8 +128,14 @@ void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
     switch(event->type)
     {
         case Fork:
-	  debug("\ninsert pid %d\n", event->exit);
-            observe_pids.insert(event->exit); 
+	{
+	  debug("\nfork insert pid %d\n", event->exit);
+	std::pair<std::set<pid_t>::iterator, bool> ret = observe_pids.insert(event->exit);
+                if(ret.second == false)
+                debug("Fehler beim einfuegen!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                else
+                debug("eingefuegt %d", *ret.first);
+}
             break;
         case Creat:
         case Truncate:
