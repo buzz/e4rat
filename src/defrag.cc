@@ -791,6 +791,56 @@ void Defrag::createDonorFiles(Device& device, std::vector<OrigDonorPair>& defrag
     
 }
 
+void checkImprovement(Device& device, std::vector<OrigDonorPair>& files)
+{
+    int frag_cnt_donor = 0;
+    int frag_cnt_orig = 0;
+    
+    int fd;
+    struct fiemap* fmap;
+    __u64 first_block = 0;
+    __u64 prev_block  = 0;
+    
+    BOOST_FOREACH(OrigDonorPair& odp, files)
+    {
+        fd = open(odp.donorPath.string().c_str(), O_RDONLY);
+        if(fd < 0)
+            throw std::logic_error(std::string("cannot open file: ")+odp.donorPath.string() + ": " + strerror(errno));
+        fmap = ioctl_fiemap(fd);
+
+        for(__u32 i = 0; i< fmap->fm_mapped_extents; i++)
+        {
+            first_block = fmap->fm_extents[i].fe_physical>>12;
+            if(abs(first_block - prev_block -1) > 31)
+                frag_cnt_donor++;
+            
+            prev_block = first_block + (fmap->fm_extents[i].fe_length>>12) - 1;
+        }
+    }
+
+    first_block = 0;
+    prev_block  = 0;
+    BOOST_FOREACH(OrigDonorPair& odp, files)
+    {
+        fd = open(odp.origPath.string().c_str(), O_RDONLY);
+        if(fd < 0)
+            throw std::logic_error(std::string("cannot open file: ")+odp.donorPath.string() + ": " + strerror(errno));
+        fmap = ioctl_fiemap(fd);
+
+        for(__u32 i = 0; i< fmap->fm_mapped_extents; i++)
+        {
+            first_block = fmap->fm_extents[i].fe_physical>>12;
+            if(abs(first_block - prev_block -1) > 31)
+                frag_cnt_orig++;
+            
+            prev_block = first_block + (fmap->fm_extents[i].fe_length>>12) - 1;
+        }
+    }
+
+    notice("Total fragment count before/afterwards:  %d/%d", frag_cnt_orig, frag_cnt_donor);
+    if(frag_cnt_donor >= frag_cnt_orig)
+        throw std::runtime_error("There is no improvement possible.");
+}
 /*
  * Main algorithm of related file defragmentation.
  *
@@ -798,10 +848,11 @@ void Defrag::createDonorFiles(Device& device, std::vector<OrigDonorPair>& defrag
          Sort all files out for all those, who move_ext ioctl will fail.
  * 2. Create all donor files
  *      Select one of the three modes of creating donor files
- * 3. Open original and donor file
- * 4. Call move extent ioctl (EXT4_IOC_MOVE_EXT)
- * 5. fadvice to free donor file from page cache
- * 6. Delete donor file
+ * 3. Check improvement
+ * 4. Open original and donor file
+ * 5. Call move extent ioctl (EXT4_IOC_MOVE_EXT)
+ * 6. fadvice to free donor file from page cache
+ * 7. Delete donor file
  */ 
 void Defrag::defragRelatedFiles(Device& device, std::vector<OrigDonorPair>& files)
 {
@@ -813,6 +864,8 @@ void Defrag::defragRelatedFiles(Device& device, std::vector<OrigDonorPair>& file
 
         createDonorFiles(device, files);
 
+        checkImprovement(device, files);
+            
         BOOST_FOREACH(OrigDonorPair& odp, files)
         {
             interruptionPoint();
