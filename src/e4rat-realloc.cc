@@ -167,7 +167,7 @@ int main(int argc, char* argv[])
                 warn("File %s does not exist.", argv[i]);
             else
             {
-                notice("Parse file ./e4rat-collect.log");
+                notice("Parsing file ./e4rat-collect.log");
                 parseInputStream(file, filelist);
                 fclose(file);
             }
@@ -179,7 +179,7 @@ int main(int argc, char* argv[])
         setStdIn2NonBlocking();
         if(EOF != peek(stdin))
         {
-             notice("Parse from stdin");
+             notice("Parsing from stdin");
              parseInputStream(stdin, filelist);
         }
         if(filelist.empty())
@@ -187,7 +187,7 @@ int main(int argc, char* argv[])
             file = fopen("./e4rat-collect.log", "r");
             if(NULL != file)
             {
-                notice("Parse file ./e4rat-collect.log");
+                notice("Parsing file ./e4rat-collect.log");
                 parseInputStream(file, filelist);
                 fclose(file);
             }

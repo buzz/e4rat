@@ -249,7 +249,7 @@ int main(int argc, char* argv[])
         {
             for(int i=optind; i < argc; i++)
             {
-                notice("Parse file %s ...", argv[i]);
+                notice("Parsing file %s ...", argv[i]);
                 FILE* file = fopen(argv[i], "r");
                 if(NULL == file)
                     warn("File %s does not exist.", argv[i]);
@@ -277,7 +277,7 @@ int main(int argc, char* argv[])
         {
             for(int i=optind; i < argc; i++)
             {
-                notice("Parse file %s ...", argv[i]);
+                notice("Parsing file %s ...", argv[i]);
                 FILE* file = fopen(argv[i], "r");
                 if(NULL == file)
                     warn("File %s does not exist.", argv[i]);
@@ -290,7 +290,7 @@ int main(int argc, char* argv[])
             setStdIn2NonBlocking();
             if(EOF != peek(stdin))
             {
-                notice("Parse from stdin ...");
+                notice("Parsing from stdin ...");
                 parseInputStream(stdin, filelist);
 	    }
             if(filelist.empty())
