@@ -30,6 +30,10 @@ find_package(auparse REQUIRED)
 set(${PROJECT_NAME}_LIBRARIES   ${${PROJECT_NAME}_LIBRARIES}
     ${AUPARSE_LIBRARY})
 
+find_package(Threads REQUIRED)
+set(${PROJECT_NAME}_LIBRARIES   ${${PROJECT_NAME}_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT})
+
 add_library(${PROJECT_NAME}-base STATIC
         config.cc
         logging.cc
