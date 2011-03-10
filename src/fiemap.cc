@@ -117,3 +117,13 @@ __u64 get_block_count(int fd)
     
     return result;
 }
+
+__u32 get_frag_count(int fd)
+{
+    struct fiemap* fmap;
+    
+    fmap = ioctl_fiemap(fd, 0);
+    if(NULL == fmap)
+        return 0;
+    return fmap->fm_mapped_extents;
+}

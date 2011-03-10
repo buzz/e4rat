@@ -791,52 +791,72 @@ void Defrag::createDonorFiles(Device& device, std::vector<OrigDonorPair>& defrag
     
 }
 
+__u32 fragmentCount(std::map<__u64, fs::path&> list)
+{
+    int fd;
+    struct fiemap* fmap;
+    __u32 frag_cnt = 0;
+    __u64 first_block = 0;
+    __u64 prev_block  = 0;
+        
+    typedef std::pair<__u64, fs::path&> f_t;
+    BOOST_FOREACH(f_t file, list)
+    {
+        fd = open(file.second.string().c_str(), O_RDONLY);
+        if(fd < 0)
+            throw std::logic_error(std::string("Cannot open file: ")+file.second.string() + ": " + strerror(errno));
+        fmap = ioctl_fiemap(fd);
+
+        for(__u32 i = 0; i< fmap->fm_mapped_extents; i++)
+        {
+            first_block = fmap->fm_extents[i].fe_physical>>12;
+            if(abs(first_block - prev_block -1) > 31)
+                frag_cnt++;
+            
+            prev_block = first_block + (fmap->fm_extents[i].fe_length>>12) - 1;
+        }
+        close(fd);
+    }
+    return frag_cnt;
+}    
+
 void checkImprovement(Device& device, std::vector<OrigDonorPair>& files)
 {
     int frag_cnt_donor = 0;
     int frag_cnt_orig = 0;
-    
     int fd;
     struct fiemap* fmap;
-    __u64 first_block = 0;
-    __u64 prev_block  = 0;
+    
+    std::map<__u64, fs::path&> filelist;
     
     BOOST_FOREACH(OrigDonorPair& odp, files)
     {
         fd = open(odp.donorPath.string().c_str(), O_RDONLY);
         if(fd < 0)
-            throw std::logic_error(std::string("cannot open file: ")+odp.donorPath.string() + ": " + strerror(errno));
+            throw std::logic_error(std::string("Cannot open file: ")+odp.donorPath.string() + ": " + strerror(errno));
         fmap = ioctl_fiemap(fd);
 
-        for(__u32 i = 0; i< fmap->fm_mapped_extents; i++)
-        {
-            first_block = fmap->fm_extents[i].fe_physical>>12;
-            if(abs(first_block - prev_block -1) > 31)
-                frag_cnt_donor++;
-            
-            prev_block = first_block + (fmap->fm_extents[i].fe_length>>12) - 1;
-        }
+        filelist.insert(std::pair<__u64, fs::path&>(fmap->fm_extents[0].fe_physical>>12, odp.donorPath));
+        close(fd);
     }
 
-    first_block = 0;
-    prev_block  = 0;
+    frag_cnt_donor = fragmentCount(filelist);
+    filelist.clear();
+    
     BOOST_FOREACH(OrigDonorPair& odp, files)
     {
         fd = open(odp.origPath.string().c_str(), O_RDONLY);
         if(fd < 0)
-            throw std::logic_error(std::string("cannot open file: ")+odp.donorPath.string() + ": " + strerror(errno));
+            throw std::logic_error(std::string("Cannot open file: ")+odp.origPath.string() + ": " + strerror(errno));
         fmap = ioctl_fiemap(fd);
 
-        for(__u32 i = 0; i< fmap->fm_mapped_extents; i++)
-        {
-            first_block = fmap->fm_extents[i].fe_physical>>12;
-            if(abs(first_block - prev_block -1) > 31)
-                frag_cnt_orig++;
-            
-            prev_block = first_block + (fmap->fm_extents[i].fe_length>>12) - 1;
-        }
+        filelist.insert(std::pair<__u64, fs::path&>(fmap->fm_extents[0].fe_physical>>12, odp.origPath));
+        close(fd);
     }
 
+    frag_cnt_orig = fragmentCount(filelist);
+    filelist.clear();
+    
     notice("Total fragment count before/afterwards:  %d/%d", frag_cnt_orig, frag_cnt_donor);
     if(frag_cnt_donor >= frag_cnt_orig)
         throw std::runtime_error("There is no improvement possible.");
@@ -900,7 +920,15 @@ void Defrag::defragRelatedFiles(Device& device, std::vector<OrigDonorPair>& file
             }
 
             try {
+                __u32 after_frag_cnt;
+                __u32 prev_frag_cnt;
+            
+                prev_frag_cnt = get_frag_count(donor_fd);
                 device.moveExtent(orig_fd, donor_fd, 0, odp.blocks);
+                after_frag_cnt = get_frag_count(donor_fd);
+                
+                if(after_frag_cnt != prev_frag_cnt)
+                    error("EXT4_IOC_MOVE_EXT does not working as expected: %s: file fragment count does not match.", odp.origPath.string().c_str());
             }
             catch(std::exception& e)
             {
