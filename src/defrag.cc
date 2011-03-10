@@ -928,7 +928,7 @@ void Defrag::defragRelatedFiles(Device& device, std::vector<OrigDonorPair>& file
                 after_frag_cnt = get_frag_count(donor_fd);
                 
                 if(after_frag_cnt != prev_frag_cnt)
-                    error("EXT4_IOC_MOVE_EXT does not working as expected: %s: file fragment count does not match.", odp.origPath.string().c_str());
+                    warn("Bug detected in ioctl EXT4_IOC_MOVE_EXT: %s: file fragment count does not match", odp.origPath.string().c_str());
             }
             catch(std::exception& e)
             {
