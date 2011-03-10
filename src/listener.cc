@@ -348,17 +348,11 @@ void AuditListener::parsePathEvent(auparse_state_t* au, boost::shared_ptr<AuditE
         auditEvent->dev = makedev(strtol(dev_buf.substr(0, found).c_str(), NULL, 16),
                                   strtol(dev_buf.substr(found+1).c_str(),NULL, 16));
     
-    if(0 > stat(auditEvent->path.string().c_str(), &st))
+    if(0 > stat(auditEvent->path.string().c_str(), &st)
+       || !S_ISREG(st.st_mode))
     {
-        // in the mean time the file got unlinked or renamed
-        // treat as Truncate to add ino to the ignored list
-        debug("stat: %s: %s", auditEvent->path.string().c_str(), strerror(errno));
-        auditEvent->type = Truncate;
-    }
-    else if(!S_ISREG(st.st_mode))
-    {
-        debug("Ignore non regular file");
-        return;
+        auditEvent->path.clear();
+        auditEvent->ino = auditEvent->dev = 0;
     }
     else if(st.st_ino != auditEvent->ino)
     {
@@ -371,8 +365,8 @@ void AuditListener::parsePathEvent(auparse_state_t* au, boost::shared_ptr<AuditE
               auditEvent->path.string().c_str(),
               auditEvent->ino, (__u32)auditEvent->dev,
               st.st_ino, (__u32)st.st_dev);
-              auditEvent->type = Truncate;
-    }   
+        auditEvent->type = Truncate;
+    }
 }
 
 /*
@@ -382,7 +376,7 @@ void AuditListener::parseSyscallEvent(auparse_state_t* au, boost::shared_ptr<Aud
 {
     int syscall;
     
-    //notice: you have to read audit message items in the correct order
+    //notice: you have to read audit message fields in the right order
     syscall = strtol(parseField(au, "syscall").c_str(), NULL, 10);
     switch(syscall)
     {
@@ -552,6 +546,11 @@ void AuditListener::exec()
         
         switch(reply.type)
         {
+            // event is syscall event
+            case AUDIT_SYSCALL:
+                parseSyscallEvent(au,auditEvent);
+                break;
+
             // change working directory
             case AUDIT_CWD:
                 if(auditEvent->type == Unknown
@@ -570,25 +569,33 @@ void AuditListener::exec()
                 parsePathEvent(au,auditEvent);
                 break;
 
-            // event is an syscall event
-            case AUDIT_SYSCALL:
-                parseSyscallEvent(au,auditEvent);
-                break;
-
             // end of multi record event
             case AUDIT_EOE:
-                debug("\nEOE %d %d\n", auditEvent->successful, !auditEvent->path.empty());
                 if(auditEvent->type != Unknown
                    && auditEvent->successful
-                   && !auditEvent->path.empty()
-                   && !ignorePath(auditEvent->path)
-                   && !ignoreDevice(auditEvent->dev)
-                   && !checkFileSystemType(auditEvent->path))
+                   && ( auditEvent->type == Fork
+                        || ( !auditEvent->path.empty()
+                             && !ignorePath(auditEvent->path)
+                             && !ignoreDevice(auditEvent->dev)
+                             && checkFileSystemType(auditEvent->path)
+                            )
+                      ))
                 {
+                    debug("Parsed Event: %d %ds", auditEvent->type, auditEvent->path.string().c_str());
                     eventParsed(auditEvent);
                 }
 
                 auditEvent = boost::shared_ptr<AuditEvent>(new AuditEvent);
+                break;
+            case AUDIT_CONFIG_CHANGE:
+                // The message does not contain what rules has been changed
+                // So test weather op field is "remove rule"
+                // auparse cannot parse field containing spaces
+                if("\"remove" == parseField(au, "op"))
+                {
+                    warn("Audit configuration has changed. Reinserting audit rules.");
+                    insertAuditRules();
+                }
                 break;
             default:
                 break;
