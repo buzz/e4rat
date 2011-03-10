@@ -330,10 +330,16 @@ void AuditListener::parseCwdEvent(auparse_state_t* au, boost::shared_ptr<AuditEv
  */
 void AuditListener::parsePathEvent(auparse_state_t* au, boost::shared_ptr<AuditEvent> auditEvent)   
 {
+    struct stat st;
+
+    if(!auditEvent->path.empty())
+        return;
+
     auditEvent->path = realpath(parsePathField(au, "name"),
-                                auditEvent->cwd);
-    auditEvent->ino = atoll(parseField(au, "inode").c_str());
-    
+                                 auditEvent->cwd);
+
+    auditEvent->ino  = atoll(parseField(au, "inode").c_str());
+
     std::string dev_buf = parseField(au, "dev");
     size_t found = dev_buf.find(":");
     if(found == std::string::npos)
@@ -341,6 +347,32 @@ void AuditListener::parsePathEvent(auparse_state_t* au, boost::shared_ptr<AuditE
     else
         auditEvent->dev = makedev(strtol(dev_buf.substr(0, found).c_str(), NULL, 16),
                                   strtol(dev_buf.substr(found+1).c_str(),NULL, 16));
+    
+    if(0 > stat(auditEvent->path.string().c_str(), &st))
+    {
+        // in the mean time the file got unlinked or renamed
+        // treat as Truncate to add ino to the ignored list
+        debug("stat: %s: %s", auditEvent->path.string().c_str(), strerror(errno));
+        auditEvent->type = Truncate;
+    }
+    else if(!S_ISREG(st.st_mode))
+    {
+        debug("Ignore non regular file");
+        return;
+    }
+    else if(st.st_ino != auditEvent->ino)
+    {
+        // path exists but inode does not fit to the event
+        // this could also happen when a file got renamed
+        // this probably results of using the glib function: g_file_set_content
+        debug("syscall %d", auditEvent->type);
+        debug("exe     %s", auditEvent->exe.string().c_str());
+        debug("Inode Number differ! %s i_event: %u, d_event: %u - i_real: %u, d_real: %u",
+              auditEvent->path.string().c_str(),
+              auditEvent->ino, (__u32)auditEvent->dev,
+              st.st_ino, (__u32)st.st_dev);
+              auditEvent->type = Truncate;
+    }   
 }
 
 /*
@@ -509,7 +541,6 @@ void AuditListener::exec()
     struct audit_reply reply;
     auparse_state_t *au;
     boost::shared_ptr<AuditEvent> auditEvent(new AuditEvent);
-    struct stat st;
     
     while(1)
     {
@@ -523,64 +554,40 @@ void AuditListener::exec()
         {
             // change working directory
             case AUDIT_CWD:
-                if(auditEvent->type == Unknown)
+                if(auditEvent->type == Unknown
+                   || !auditEvent->successful)
                     break;
+
                 parseCwdEvent(au, auditEvent);
                 break;
+
             // event refers to file
             case AUDIT_PATH:
-                if(auditEvent->type == Unknown)
+                if(auditEvent->type == Unknown
+                   || !auditEvent->successful)
                     break;
-                
+
                 parsePathEvent(au,auditEvent);
-
-                if(!auditEvent->successful)
-                    break;
-
-                if(auditEvent->path.empty())
-                    break;
-
-                if(ignorePath(auditEvent->path)
-                   || ignoreDevice(auditEvent->dev)
-                   || !checkFileSystemType(auditEvent->path))
-                    break;
-
-                if(0 > stat(auditEvent->path.string().c_str(), &st))
-                {
-                    // in the mean time the file got unlinked or renamed
-                    // treat as Truncate to add ino to the ignored list
-                    debug("stat: %s: %s", auditEvent->path.string().c_str(), strerror(errno));
-                    auditEvent->type = Truncate;
-                }
-                else if(!S_ISREG(st.st_mode))
-                {
-                    debug("Ignore non regular file");
-                    break;
-                }
-                else if(st.st_ino != auditEvent->ino)
-                {
-                    // path exists but inode does not fit to the event
-                    // this could also happen when a file got renamed
-                    // this probably results of using the glib function: g_file_set_content
-                    debug("syscall %d", auditEvent->type);
-                    debug("exe     %s", auditEvent->exe.string().c_str());
-                    debug("Inode Number differ! %s i_event: %u, d_event: %u - i_real: %u, d_real: %u",
-                          auditEvent->path.string().c_str(),
-                          auditEvent->ino, (__u32)auditEvent->dev,
-                          st.st_ino, (__u32)st.st_dev);
-                    auditEvent->type = Truncate;
-                }
-
-                eventParsed(auditEvent);
                 break;
+
             // event is an syscall event
             case AUDIT_SYSCALL:
                 parseSyscallEvent(au,auditEvent);
-		if(auditEvent->type == Fork)
-		  eventParsed(auditEvent);
                 break;
+
             // end of multi record event
             case AUDIT_EOE:
+                debug("\nEOE %d %d\n", auditEvent->successful, !auditEvent->path.empty());
+                if(auditEvent->type != Unknown
+                   && auditEvent->successful
+                   && !auditEvent->path.empty()
+                   && !ignorePath(auditEvent->path)
+                   && !ignoreDevice(auditEvent->dev)
+                   && !checkFileSystemType(auditEvent->path))
+                {
+                    eventParsed(auditEvent);
+                }
+
                 auditEvent = boost::shared_ptr<AuditEvent>(new AuditEvent);
                 break;
             default:
