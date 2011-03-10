@@ -149,7 +149,7 @@ void printUsage()
 "\n"
 "    -V --version                    print version and exit\n"
 "    -h --help                       print help and exit\n"
-"    -v --verbose                    increment verbose level\n"
+"    -v --verbose                    increment verbosity level\n"
 "    -q --quiet                      set verbose level to 0\n"
 "    -l --loglevel <number>          set log level\n"
 "\n"
@@ -194,8 +194,8 @@ int main(int argc, char* argv[])
     Listener listener;
 
     // excluding file list only affect only if process id is not 1
-    if(0 == access("/var/lib/"PROGRAM_NAME"/startup", F_OK))
-        exclude_filenames.push_back("/var/lib/"PROGRAM_NAME"/startup");
+    if(0 == access(STARTUP_LOG_FILE, F_OK))
+        exclude_filenames.push_back(STARTUP_LOG_FILE);
     
     static struct option long_options[] =
         {
@@ -343,7 +343,7 @@ int main(int argc, char* argv[])
     {
         create_pid_late = true;
 
-        outPath = "/var/lib/"PROGRAM_NAME"/startup";
+        outPath = STARTUP_LOG_FILE;
         verbose = 0;
     }
     else
@@ -456,12 +456,12 @@ int main(int argc, char* argv[])
         sigaction(SIGALRM, &sa, NULL);
         alarm(Config::get<unsigned int>("timeout"));
     }
-    notice("Start event processing ...");
+    notice("Starting event processing ...");
     listener.start();
 
     filelist = project.getFileList();
     
-    notice("%d files scanned.", filelist.size());
+    notice("%d file(s) collected.", filelist.size());
 
     if(filelist.empty())
         goto out;

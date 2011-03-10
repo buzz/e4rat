@@ -55,7 +55,7 @@ class AuditEvent
         fs::path cwd;
         ino_t ino;
         dev_t dev;
-        int  exit;
+        pid_t  exit;
         bool readOnly;
         bool successful;
 };

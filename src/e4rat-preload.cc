@@ -128,7 +128,7 @@ void printUsage()
 "\n"
 "    -V --version                    print version and exits\n"
 "    -h --help                       print help and exits\n"
-"    -v --verbose                    increment verbose level\n"
+"    -v --verbose                    increment verbosity level\n"
 "    -q --quiet                      set verbose level to 0\n"
 "    -l --loglevel <number>          set log level\n"
 "\n"
@@ -232,11 +232,11 @@ int main(int argc, char* argv[])
     try {
     if(getpid() == 1)
     {
-        notice("Open /var/lib/%s/startup ... ", PROGRAM_NAME);
-        FILE* infile = fopen("/var/lib/"PROGRAM_NAME"/startup", "r");
+        notice("Open %s ... ", STARTUP_LOG_FILE);
+        FILE* infile = fopen(STARTUP_LOG_FILE, "r");
         if(!infile)
         {
-            std::cerr << "No startup file list found.\n";
+            error("%s is not accessible", STARTUP_LOG_FILE);
             execv(Config::get<std::string>("init").c_str(), argv);
         }
         

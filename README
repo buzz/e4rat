@@ -33,10 +33,15 @@ parameters:
     init=/usr/sbin/e4rat-collect
 
 After e4rat-collect has terminated the generated file list is stored at:
-    /var/lib/e4rat/startup
+    /var/lib/e4rat/startup.log
 
+Before reallocating boot files it is recommaned to switch to runlevel S to
+stop most of all running proceses to gain write access to the process binary
+file:
+    init S
+    
 Reallocating boot files:
-    e4rat-realloc  /var/lib/e4rat/startup
+    e4rat-realloc  /var/lib/e4rat/startup.log
 
 To start e4rat-preload as initial process append following to kernel your
 parameters:

@@ -237,7 +237,7 @@ void Optimizer::relatedFiles(std::vector<fs::path>& files)
             notice("%*d/%d file(s) not on an ext4 filesystem",
                    (int)(log10(files.size())+1), wrong_filesystem_type, files.size());
         if(invalid_file_type)
-            notice("%*d/%d file(s) has invalid file type.",
+            notice("%*d/%d file(s) have invalid file type.",
                    (int)(log10(files.size())+1), invalid_file_type , files.size());
         if(not_writable)
             notice("%*d/%d file(s) are presently not writable.",
@@ -246,7 +246,7 @@ void Optimizer::relatedFiles(std::vector<fs::path>& files)
             notice("%*d/%d file(s) cannot set inode extent flag.",
                    (int)(log10(files.size())+1), not_extent_based , files.size());
         if(empty_files)
-            notice("%*d/%d file(s) has no blocks.",
+            notice("%*d/%d file(s) have no blocks.",
                    (int)(log10(files.size())+1), empty_files , files.size());
         
         if(filemap.empty())
@@ -283,7 +283,7 @@ void Optimizer::relatedFiles(std::vector<fs::path>& files)
          */
         BOOST_FOREACH(filemap_pair_t map, filemap)
         {
-            notice("Process %d file(s) on device %s (mount-point: %s)",
+            notice("Processing %d file(s) on device %s (mount-point: %s)",
                    map.second.size(),
                    map.first.getDevicePath().c_str(),
                    map.first.getMountPoint().string().c_str());
