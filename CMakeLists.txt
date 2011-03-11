@@ -9,6 +9,7 @@ IF( NOT CMAKE_BUILD_TYPE )
 ENDIF()
 
 set(Boost_USE_MULTITHREADED OFF)
+add_definitions(-DBOOST_FILESYSTEM_VERSION=2)
 find_package(Boost 1.41 COMPONENTS system filesystem regex REQUIRED)
 set(${PROJECT_NAME}_LIBRARIES   ${${PROJECT_NAME}_LIBRARIES}
     ${Boost_LIBRARIES})

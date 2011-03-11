@@ -69,8 +69,6 @@ fs::path ScanFsAccess::getPath2RegularFile(fs::path& path)
     
 void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
 {
-  if(event->type == Fork)
-  debug("Fork\n");
     // Since Linux set audit filter AUDT_FILTER_ENTRY as deprecated, there is no way
     // to monitor exit() syscall events.
     // Cause we identify processes by its process id, we have to check whether 
@@ -89,53 +87,19 @@ void ScanFsAccess::handleAuditEvent(boost::shared_ptr<AuditEvent> event)
     {
         if(observe_pids.find(event->pid) == observe_pids.end())
 	{
-	  debug("unknown pid %d", event->pid);
             if(observe_apps.find(event->comm) == observe_apps.end())
-	      {
-		debug("unknown comm %s", event->comm.c_str());
 	        return;
-	      }
-	    debug("comm found: insert pid %d", event->pid);
-	    std::pair<std::set<pid_t>::iterator, bool> ret = observe_pids.insert(event->pid);
-		if(ret.second == false)
-		debug("Fehler beim einfuegen!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		else
-		debug("eingefuegt");
+
+	    debug("Valid process name %. insert pid %d", event->comm.c_str(), event->pid);
+            observe_pids.insert(event->pid);
 	}
-#if 0
-        // follow process id's
-        if(observe_pids.find(event->pid) == observe_pids.end())
-        {
-            if(event->type != Fork)
-                return;
-            if(observe_pids.find(event->ppid) == observe_pids.end())
-                return;
-            observe_pids.insert(event->exit);
-        }
-#endif
-#if 0
-        if(observe_pids.find(event->pid) == observe_pids.end())
-        {
-            if(observe_pids.find(event->ppid) == observe_pids.end())
-                return;
-            else
-                observe_pids.insert(event->pid);
-        }
-#endif
     }
     debug("syscall: %d RO: %d", event->type, event->readOnly);
     
     switch(event->type)
     {
         case Fork:
-	{
-	  debug("\nfork insert pid %d\n", event->exit);
-	std::pair<std::set<pid_t>::iterator, bool> ret = observe_pids.insert(event->exit);
-                if(ret.second == false)
-                debug("Fehler beim einfuegen!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                else
-                debug("eingefuegt %d", *ret.first);
-}
+            observe_pids.insert(event->exit);
             break;
         case Creat:
         case Truncate:

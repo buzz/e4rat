@@ -30,15 +30,27 @@
 #include <ext2fs/ext2fs.h>
 #include <ext2fs/ext2_fs.h>
 
+
+enum attr_err_t
+{
+    Valid,
+    Unavailable,
+    InvalidFileType,
+    NotExtentBased,
+    Empty
+};
+    
 struct OrigDonorPair
 {
         OrigDonorPair()
         {
             blocks = 0;
+            error = Valid;
         }
         fs::path origPath;
         fs::path donorPath;
         __u64 blocks;
+        attr_err_t error;
 };
 
 class Defrag : public InterruptAble
