@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-e4rat-realloc - Reallocatoin and defragmentation of relevant files
+e4rat-realloc - Reallocation and defragmentation of relevant files
 
 =head1 SYNOPSIS
 
@@ -39,6 +39,11 @@ set verbosity level to 0. This means that no messages will be displayed.
 =item -l --loglevel <number>
 
 set loglevel to <number>. All log messages are sent either to the Kernel log (see dmesg(1)) or to syslog(3).
+
+
+=item -f --force
+
+force reallocating files even though it will get worse afterwards.
 
 =back
 

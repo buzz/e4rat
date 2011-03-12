@@ -859,7 +859,8 @@ void checkImprovement(Device& device, std::vector<OrigDonorPair>& files)
     
     notice("Total fragment count before/afterwards:  %d/%d", frag_cnt_orig, frag_cnt_donor);
     if(frag_cnt_donor >= frag_cnt_orig)
-        throw std::runtime_error("There is no improvement possible.");
+        if(Config::get<bool>("force") == false)
+            throw std::runtime_error("There is no improvement possible.");
 }
 /*
  * Main algorithm of related file defragmentation.

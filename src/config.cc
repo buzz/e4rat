@@ -38,6 +38,7 @@ Config::Config()
     defaultProperty.put("timeout", 120);
     defaultProperty.put("log_target", "/dev/kmsg");
     defaultProperty.put("init", "/sbin/init");
+    defaultProperty.put("force", false);
 }
 
 Config::~Config()

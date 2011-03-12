@@ -60,6 +60,7 @@ void printUsage()
 "    -v --verbose                    increment verbosity level\n"
 "    -q --quiet                      set verbose level to 0\n"
 "    -l --loglevel <number>          set log level\n"
+"    -f --force                      force reallocating files\n"
 "\n"
 "  DEFRAGMENTATION MODES:\n"
 "    -p --use-prealloc               Use pre-allocation kernel patch\n"
@@ -88,6 +89,7 @@ int main(int argc, char* argv[])
             {"quiet",              no_argument,       0, 'q'},
             {"help",               no_argument,       0, 'h'},
             {"loglevel",           required_argument, 0, 'l'},
+            {"force",              no_argument,       0, 'f'},
             {"use-prealloc",       no_argument,       0, 'p'},
             {"use-locality-group", no_argument,       0, 'g'},
             {"use-tld",            no_argument,       0, 't'},
@@ -97,7 +99,7 @@ int main(int argc, char* argv[])
     
     char c;
     int option_index = 0;
-    while ((c = getopt_long (argc, argv, "Vvhql:pgt", long_options, &option_index)) != EOF)
+    while ((c = getopt_long (argc, argv, "Vvhql:fpgt", long_options, &option_index)) != EOF)
     {
         switch(c)
         {
@@ -115,6 +117,9 @@ int main(int argc, char* argv[])
                 break;
             case 'l':
                 loglevel = atoi(optarg);
+                break;
+            case 'f':
+                Config::set("force", true);
                 break;
             case 'p':
                 Config::set("defrag_mode", "pa");
