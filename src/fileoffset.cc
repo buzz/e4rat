@@ -20,6 +20,7 @@
 
 #include "common.hh"
 #include "fiemap.hh"
+#include "parsefilelist.hh"
 #include <iostream>
 #include <cstdio>
 #include <sys/types.h>
@@ -31,77 +32,18 @@
 #include <linux/limits.h>
 #include <boost/foreach.hpp>
 
-bool isNumeric(const char *p)
+/*
+ * FileInfo is a wrapper class of fs::path
+ * Constructor are necessary to use common file list parser
+ */
+class FileInfo : public boost::filesystem::path
 {
-    for ( ; *p; p++)
-        if (*p < '0' || *p > '9')
-            return false;
-    return true;
-}
-
-void setStdIn2NonBlocking()
-{
-    int cinfd = fileno(stdin);
-    const int fcflags = fcntl(cinfd,F_GETFL);
-    if (fcflags<0)
-    {
-        std::cerr << "Cannot read flags of stdin\n";
-    }
-    if (fcntl(cinfd,F_SETFL,fcflags | O_NONBLOCK) <0)
-    {
-        std::cerr << "Cannot set stdin to non-blocking\n";
-    } 
-    std::cin.exceptions ( std::ifstream::eofbit
-                          | std::ifstream::failbit
-                          | std::ifstream::badbit );
-}
-
-void parseArguemntList(int argc, char* argv[], std::vector<std::string>& filelist)
-{
-    if(optind < argc)
-    {
-        if(isNumeric(argv[optind]))
-        {
-            for ( ; optind < argc - 2; optind +=3)
-                filelist.push_back(argv[optind+2]);
-            if(optind != argc)
-            {
-                std::cout << "Error parsing input values\n";
-            }
-        }
-        else
-            for ( ; optind < argc; optind++)
-                filelist.push_back(argv[optind]);
-    }
-}
-
-void parseInputStream(std::istream& in, std::vector<std::string>& filelist)
-{
-    int td = 0;
-    ino_t ti;
-    char tp[PATH_MAX];
-    
-    setStdIn2NonBlocking();
-    
-    try {
-        if(std::cin.peek() == '/')
-            while(!std::cin.eof())
-            {
-                std::cin >> tp;
-                filelist.push_back(tp);
-            }
-        else
-            while(1)
-            {
-                std::cin >> td;
-                std::cin >> ti;
-                std::cin >> tp;
-                filelist.push_back(tp);
-            }
-    }
-    catch(...)
-    {}
-}
+    public:
+        FileInfo(dev_t, ino_t, fs::path p)
+            : boost::filesystem::path(p) {}
+        FileInfo(fs::path p)
+            : boost::filesystem::path(p) {}
+};
 
 void printUsage()
 {
@@ -117,22 +59,53 @@ int main(int argc, char* argv[])
     int l = 13;
 
     
-    std::vector<std::string> filelist;
-    parseArguemntList(argc, argv, filelist);
-    parseInputStream(std::cin, filelist);
+    std::vector<FileInfo> filelist;
 
+    try {
+        FILE* file;
+        /*
+         * parse file list given as arguments
+         */
+        for(int i=optind; i < argc; i++)
+        {
+            file = fopen(argv[i], "r");
+            if(NULL == file)
+                fprintf(stderr, "File %s does not exists: %s\n", argv[i], strerror(errno));
+            else
+            {
+                printf("Parsing file %s\n", argv[i]);
+                parseInputStream(file, filelist);
+                fclose(file);
+            }
+        }
+
+        /*
+         * parse file list on stdin
+         */
+        setStdIn2NonBlocking();
+        if(EOF != peek(stdin))
+        {
+             printf("Parsing from stdin\n");
+             parseInputStream(stdin, filelist);
+        }
+    }
+    catch(std::exception&e )
+    {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
     if(filelist.empty())
         goto out;
 
     printf("%*s%*s%*s%*s%*s   %s\n", 3, "ext", l, "start",l, "end",l, "length", l, "offset", "file");
     
-    BOOST_FOREACH(std::string& file, filelist)
+    BOOST_FOREACH(fs::path& file, filelist)
     {
-        fd = open(file.c_str(), O_RDONLY | O_NOFOLLOW);
+        fd = open(file.string().c_str(), O_RDONLY | O_NOFOLLOW);
         if(-1 == fd)
         {
             std::cerr << "Cannot open file: "
-                      << file << ": "
+                      << file.string() << ": "
                       << strerror(errno) << std::endl;
             continue;
         }
@@ -141,7 +114,7 @@ int main(int argc, char* argv[])
         if(NULL == fmap)
         {
             std::cerr << "Cannot receive file extents: "
-                      << file << ": "
+                      << file.string() << ": "
                       << strerror(errno) << std::endl;
             close(fd);
             continue;
@@ -161,7 +134,7 @@ int main(int argc, char* argv[])
             printf("%*d", l, start - prev_block  -1);
             prev_block = end;
             if(0 == i)
-                printf("   %s", file.c_str());
+                printf("   %s", file.string().c_str());
             printf("\n");
                     
         }

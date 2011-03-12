@@ -167,7 +167,7 @@ int main(int argc, char* argv[])
                 warn("File %s does not exist.", argv[i]);
             else
             {
-                notice("Parsing file ./e4rat-collect.log");
+                notice("Parsing file %s", argv[i]);
                 parseInputStream(file, filelist);
                 fclose(file);
             }

@@ -22,7 +22,7 @@
  */
 
 #include "logging.hh"
-
+#include <sstream>
 int peek(FILE* in)
 {
     int c = fgetc(in);
