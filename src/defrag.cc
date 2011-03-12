@@ -801,7 +801,6 @@ __u32 fragmentCount(std::map<__u64, const char*> list)
     int fd;
     struct fiemap* fmap;
     __u32 frag_cnt = 0;
-    __u64 first_block = 0;
     __u64 prev_block  = 0;
         
     typedef std::pair<__u64, const char*> f_t;
@@ -812,13 +811,17 @@ __u32 fragmentCount(std::map<__u64, const char*> list)
             throw std::logic_error(std::string("Cannot open file: ")+iter.second + ": " + strerror(errno));
         fmap = ioctl_fiemap(fd);
 
+ 
         for(__u32 i = 0; i< fmap->fm_mapped_extents; i++)
         {
-            first_block = fmap->fm_extents[i].fe_physical>>12;
-            if(abs(first_block - prev_block -1) > 31)
+            if(prev_block != fmap->fm_extents[i].fe_physical)
                 frag_cnt++;
-            
-            prev_block = first_block + (fmap->fm_extents[i].fe_length>>12) - 1;
+
+            prev_block = fmap->fm_extents[i].fe_physical;
+            if(i > fmap->fm_mapped_extents)
+                prev_block += fmap->fm_extents[i+1].fe_logical - fmap->fm_extents[i].fe_logical;
+            else
+                prev_block += fmap->fm_extents[i].fe_length;
         }
         close(fd);
     }
