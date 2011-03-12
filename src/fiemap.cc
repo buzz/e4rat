@@ -37,12 +37,8 @@
  */
 struct fiemap* ioctl_fiemap(int fd, unsigned int extent_count)
 {
-    int do_realloc = 0;
     if(!extent_count)
-    {
         extent_count = 10;
-        do_realloc = 1;
-    }
     
     struct fiemap* fmap = (struct fiemap*)calloc(1, 
                 sizeof(struct fiemap) + extent_count * sizeof(struct fiemap_extent));
@@ -70,13 +66,13 @@ struct fiemap* ioctl_fiemap(int fd, unsigned int extent_count)
         return NULL;
     }
     
-    if(do_realloc)
+    if(fmap->fm_mapped_extents == fmap->fm_extent_count)
+        return ioctl_fiemap(fd, extent_count<<1);
+
+    if(fmap->fm_mapped_extents < fmap->fm_extent_count)
     {
-        if(fmap->fm_mapped_extents == fmap->fm_extent_count)
-            fmap = ioctl_fiemap(fd, extent_count<<4);
-        
         fmap = (struct fiemap*) realloc(fmap, sizeof(struct fiemap) 
-                            + fmap->fm_mapped_extents  * sizeof(struct fiemap_extent));
+                                        + fmap->fm_mapped_extents  * sizeof(struct fiemap_extent));
         fmap->fm_extent_count = fmap->fm_mapped_extents;
     }
     
@@ -101,29 +97,42 @@ struct fiemap* get_fiemap(const char* file)
 }
 
 /*
- * Calculating physical block count of inode
+ * Calculate the inode's logical size of used blocks on disk.
+ * Sparse files may have holes of unallocated blocks between its extents.
+ *
+ * The return value will inherit those blocks too. 
+ * So the returned block count number can used to create an appropriate donor file. 
  */
 __u64 get_block_count(int fd)
-{
-    __u64 result = 0;
-    struct fiemap* fmap;
-    
-    fmap = ioctl_fiemap(fd, 0);
-    if(NULL == fmap)
-        return result;
-    
-    for(unsigned int j=0; j < fmap->fm_mapped_extents; j++)
-        result += fmap->fm_extents[j].fe_length >> 12;
-    
-    return result;
-}
-
-__u32 get_frag_count(int fd)
 {
     struct fiemap* fmap;
     
     fmap = ioctl_fiemap(fd, 0);
     if(NULL == fmap)
         return 0;
-    return fmap->fm_mapped_extents;
+    
+    for(unsigned int j=0; j < fmap->fm_mapped_extents; j++)
+        if(fmap->fm_extents[j].fe_flags & FIEMAP_EXTENT_LAST)
+            return (fmap->fm_extents[j].fe_logical + fmap->fm_extents[j].fe_length) >> 12;
+    return 0;
 }
+
+/*
+ * In case of sparse files ignore unallocated holes.
+ */
+__u32 get_frag_count(int fd)
+{
+    __u32 result = 1;
+    struct fiemap* fmap;
+    
+    fmap = ioctl_fiemap(fd, 0);
+    if(NULL == fmap)
+        return 0;
+
+    for(unsigned int j=1; j < fmap->fm_mapped_extents; j++)
+        if(fmap->fm_extents[j].fe_physical != fmap->fm_extents[j-1].fe_physical + fmap->fm_extents[j].fe_logical - fmap->fm_extents[j-1].fe_logical)
+            result++;
+
+    return result;
+}
+

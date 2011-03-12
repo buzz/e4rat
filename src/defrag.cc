@@ -886,7 +886,9 @@ void Defrag::defragRelatedFiles(Device& device, std::vector<OrigDonorPair>& file
         createDonorFiles(device, files);
 
         checkImprovement(device, files);
-            
+
+        __u32 after_frag_cnt;
+        __u32 prev_frag_cnt;    
         BOOST_FOREACH(OrigDonorPair& odp, files)
         {
             interruptionPoint();
@@ -919,14 +921,13 @@ void Defrag::defragRelatedFiles(Device& device, std::vector<OrigDonorPair>& file
                       odp.donorPath.string().c_str(), strerror(errno));
                 continue;
             }
-
-            try {
-                __u32 after_frag_cnt;
-                __u32 prev_frag_cnt;
             
+            try {
                 prev_frag_cnt = get_frag_count(donor_fd);
-                device.moveExtent(orig_fd, donor_fd, 0, odp.blocks);
-                after_frag_cnt = get_frag_count(donor_fd);
+
+                device.moveExtent(orig_fd, donor_fd, 0, odp.blocks);              
+                      
+                after_frag_cnt = get_frag_count(orig_fd);
                 
                 if(after_frag_cnt != prev_frag_cnt)
                     warn("Bug detected in ioctl EXT4_IOC_MOVE_EXT: %s: file fragment count does not match", odp.origPath.string().c_str());
