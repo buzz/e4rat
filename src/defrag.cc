@@ -156,7 +156,7 @@ bool Defrag::doesKernelSupportPA(Device device)
 }
 
 
-bool checkFileSystem(Device& device)
+bool checkFileSystem(Device device)
 {
     if(device.getFileSystem() != "ext4")
     {
@@ -191,10 +191,7 @@ bool checkFileSystem(Device& device)
 void Optimizer::relatedFiles(std::vector<fs::path>& files)
 {
     try {
-        typedef std::pair<dev_t, std::vector<fs::path> >       files_per_dev_pair_t;
-        typedef std::pair<Device, std::vector<OrigDonorPair> > filemap_pair_t;
-        
-        std::map<dev_t, std::vector<fs::path> > files_per_dev;
+        typedef std::map<Device, std::vector<OrigDonorPair> > filemap_t;
         std::map<Device, std::vector<OrigDonorPair> > filemap;
         
         int files_unavailable     = 0;
@@ -212,21 +209,32 @@ void Optimizer::relatedFiles(std::vector<fs::path>& files)
                 files_unavailable++;
             }
             else
-                files_per_dev[st.st_dev].push_back(file);
+                filemap[st.st_dev].push_back(OrigDonorPair(file));
         }
 
         /*
-         * Check file attributes
+         * Check filesystem type
          */
-        BOOST_FOREACH(files_per_dev_pair_t dev_it, files_per_dev)
+        for(filemap_t::iterator it= filemap.begin();
+            it != filemap.end();)
         {
-            Device device(dev_it.first);
-            if(checkFileSystem(device))
-                filemap.insert(filemap_pair_t(device, checkFilesAttributes(dev_it.second)));
+            if(checkFileSystem(it->first))
+                ++it;
             else
-                wrong_filesystem_type += dev_it.second.size();
+            {
+                wrong_filesystem_type += it->second.size();
+                filemap.erase(it++);
+            }
         }
-        
+
+        /*
+         * Check file Attributes
+         */
+        for(filemap_t::iterator it= filemap.begin();
+            it != filemap.end();
+            it++)
+            checkFilesAttributes(it->second);
+
         /*
          * Display file statistics 
          */
@@ -281,14 +289,11 @@ void Optimizer::relatedFiles(std::vector<fs::path>& files)
         /*
          * Let's rock!
          */
-        BOOST_FOREACH(filemap_pair_t map, filemap)
+        for(filemap_t::iterator it= filemap.begin();
+            it != filemap.end();
+            it++)
         {
-            notice("Processing %d file(s) on device %s (mount-point: %s)",
-                   map.second.size(),
-                   map.first.getDevicePath().c_str(),
-                   map.first.getMountPoint().string().c_str());
-            
-            defragRelatedFiles(map.first, map.second);
+            defragRelatedFiles(it->first, it->second);
         }
     }
     catch(UserInterrupt& e)
@@ -299,21 +304,17 @@ void Optimizer::relatedFiles(std::vector<fs::path>& files)
 
 /*
  * Check file's attributes.
- * Use this function to sort out all files move extent call will fail.
- * If file is invalid std::runtime_error is thrown,
- * otherwise return file's block count
+ * Sort out files move extent call will fail.
+ * If file is valid OrigDonorPair::blocks is set
  */
-std::vector<OrigDonorPair> Defrag::checkFilesAttributes(std::vector<fs::path>& i_files)
+void Defrag::checkFilesAttributes(std::vector<OrigDonorPair>& files)
 {
     struct stat st;
     int flags;
-    OrigDonorPair odp;
     
-    std::vector<OrigDonorPair> checked_files;
-
-    BOOST_FOREACH(fs::path& file, i_files)
+    BOOST_FOREACH(OrigDonorPair& odp, files)
     {
-        const char* path = file.string().c_str();
+        const char* path = odp.origPath.string().c_str();
         
         // we cannot open fd of symbolic link. therefore open with O_NOFOLLOW
         // in case of a symbolic link will fail regardless
@@ -328,7 +329,7 @@ std::vector<OrigDonorPair> Defrag::checkFilesAttributes(std::vector<fs::path>& i
             {
                 case ELOOP:
                     invalid_file_type++;
-                    info("Cannot open file: %s: Is a symbolic link.", path);
+                    info("Cannot open file: %s: is a symbolic link", path);
                     continue;
                 case EISDIR:
                     invalid_file_type++; break;
@@ -389,15 +390,10 @@ std::vector<OrigDonorPair> Defrag::checkFilesAttributes(std::vector<fs::path>& i
             empty_files++;
             goto cont;
         }
-        odp.origPath = file;
-        checked_files.push_back(odp);
-cont:
+
+cont:        
         close(fd);
     }
-
-
-    
-    return checked_files;
 }
 
 /*
@@ -544,6 +540,9 @@ void Defrag::createDonorFiles_PA(Device& device,
     Extent free_space = findFreeSpace(device, 0, blk_count);
     BOOST_FOREACH(OrigDonorPair& odp, files)
     {
+        if(odp.blocks == 0)
+            continue;
+        
         odp.donorPath = createTempFile(device.getMountPoint(), 0);
         fd = open(odp.donorPath.string().c_str(), O_WRONLY, 0700);
         if(0 > fd)
@@ -644,6 +643,9 @@ void Defrag::createDonorFiles_LocalityGroup(Device& device,
          */
         BOOST_FOREACH(OrigDonorPair& odp, files)
         {
+            if(odp.blocks == 0)
+                continue;
+            
             odp.donorPath = createTempFile(device.getMountPoint(),
                                            odp.blocks*device.getBlockSize());
         }
@@ -706,6 +708,9 @@ void Defrag::createDonorFiles_TLD(Device& device,
         // create donor files
         BOOST_FOREACH(OrigDonorPair& odp, files)
         {
+            if(odp.blocks == 0)
+                continue;
+            
             interruptionPoint();
             
             try {
@@ -791,7 +796,7 @@ void Defrag::createDonorFiles(Device& device, std::vector<OrigDonorPair>& defrag
     
 }
 
-__u32 fragmentCount(std::map<__u64, fs::path&> list)
+__u32 fragmentCount(std::map<__u64, const char*> list)
 {
     int fd;
     struct fiemap* fmap;
@@ -799,12 +804,12 @@ __u32 fragmentCount(std::map<__u64, fs::path&> list)
     __u64 first_block = 0;
     __u64 prev_block  = 0;
         
-    typedef std::pair<__u64, fs::path&> f_t;
-    BOOST_FOREACH(f_t file, list)
+    typedef std::pair<__u64, const char*> f_t;
+    BOOST_FOREACH(f_t iter, list)
     {
-        fd = open(file.second.string().c_str(), O_RDONLY);
+        fd = open(iter.second, O_RDONLY);
         if(fd < 0)
-            throw std::logic_error(std::string("Cannot open file: ")+file.second.string() + ": " + strerror(errno));
+            throw std::logic_error(std::string("Cannot open file: ")+iter.second + ": " + strerror(errno));
         fmap = ioctl_fiemap(fd);
 
         for(__u32 i = 0; i< fmap->fm_mapped_extents; i++)
@@ -827,30 +832,38 @@ void checkImprovement(Device& device, std::vector<OrigDonorPair>& files)
     int fd;
     struct fiemap* fmap;
     
-    std::map<__u64, fs::path&> filelist;
-    
+    std::map<__u64, const char*> filelist;
+
+
     BOOST_FOREACH(OrigDonorPair& odp, files)
     {
-        fd = open(odp.donorPath.string().c_str(), O_RDONLY);
+        const char* file;
+        if(odp.donorPath.empty())
+            file = odp.origPath.string().c_str();
+        else
+            file = odp.donorPath.string().c_str();
+        
+        fd = open(file, O_RDONLY);
         if(fd < 0)
-            throw std::logic_error(std::string("Cannot open file: ")+odp.donorPath.string() + ": " + strerror(errno));
+            continue;
         fmap = ioctl_fiemap(fd);
 
-        filelist.insert(std::pair<__u64, fs::path&>(fmap->fm_extents[0].fe_physical>>12, odp.donorPath));
+        filelist.insert(std::pair<__u64, const char*>(fmap->fm_extents[0].fe_physical>>12, file));
         close(fd);
     }
 
     frag_cnt_donor = fragmentCount(filelist);
     filelist.clear();
-    
+
+
     BOOST_FOREACH(OrigDonorPair& odp, files)
     {
         fd = open(odp.origPath.string().c_str(), O_RDONLY);
         if(fd < 0)
-            throw std::logic_error(std::string("Cannot open file: ")+odp.origPath.string() + ": " + strerror(errno));
+            continue;
         fmap = ioctl_fiemap(fd);
 
-        filelist.insert(std::pair<__u64, fs::path&>(fmap->fm_extents[0].fe_physical>>12, odp.origPath));
+        filelist.insert(std::pair<__u64, const char*>(fmap->fm_extents[0].fe_physical>>12, odp.origPath.string().c_str()));
         close(fd);
     }
 
@@ -882,12 +895,25 @@ void checkImprovement(Device& device, std::vector<OrigDonorPair>& files)
  * 6. fadvice to free donor file from page cache
  * 7. Delete donor file
  */ 
-void Defrag::defragRelatedFiles(Device& device, std::vector<OrigDonorPair>& files)
+void Defrag::defragRelatedFiles(Device device, std::vector<OrigDonorPair>& files)
 {
     int fcnt = 0;
     int orig_fd;
     int donor_fd;
-
+    __u32 valid_files = 0;
+    
+    BOOST_FOREACH(OrigDonorPair& odp, files)
+        if(odp.blocks)
+            valid_files++;
+    
+    if(!valid_files)
+        return;
+    
+    notice("Processing %d file(s) on device %s (mount-point: %s)",
+           valid_files,
+           device.getDevicePath().c_str(),
+           device.getMountPoint().string().c_str());
+    
     try {
 
         createDonorFiles(device, files);
@@ -898,9 +924,11 @@ void Defrag::defragRelatedFiles(Device& device, std::vector<OrigDonorPair>& file
         __u32 prev_frag_cnt;    
         BOOST_FOREACH(OrigDonorPair& odp, files)
         {
+            if(odp.blocks == 0)
+                continue;
             interruptionPoint();
             info("[ %*d/%d ] %*llu block(s)    %s", (int)(log10(files.size())+1), ++fcnt, 
-                 files.size(), 
+                 valid_files, 
                  6, odp.blocks,
                  odp.origPath.string().c_str());
             

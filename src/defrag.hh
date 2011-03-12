@@ -30,27 +30,14 @@
 #include <ext2fs/ext2fs.h>
 #include <ext2fs/ext2_fs.h>
 
-
-enum attr_err_t
-{
-    Valid,
-    Unavailable,
-    InvalidFileType,
-    NotExtentBased,
-    Empty
-};
-    
 struct OrigDonorPair
 {
-        OrigDonorPair()
-        {
-            blocks = 0;
-            error = Valid;
-        }
+        OrigDonorPair() : blocks(0) {}
+        OrigDonorPair(fs::path p) : origPath(p), blocks(0) {}
+
         fs::path origPath;
         fs::path donorPath;
         __u64 blocks;
-        attr_err_t error;
 };
 
 class Defrag : public InterruptAble
@@ -74,10 +61,9 @@ class Defrag : public InterruptAble
                         Device& device,
                         std::vector<OrigDonorPair>& defragPair );
 
-        std::vector<OrigDonorPair>
-        checkFilesAttributes(filelist_t&);
+        void checkFilesAttributes(std::vector<OrigDonorPair>&);
         
-        void defragRelatedFiles(Device& device, std::vector<OrigDonorPair>& files);
+        void defragRelatedFiles(Device device, std::vector<OrigDonorPair>& files);
 
         int invalid_file_type;
         int not_writable;

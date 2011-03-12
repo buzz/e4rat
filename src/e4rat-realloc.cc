@@ -187,7 +187,8 @@ int main(int argc, char* argv[])
              notice("Parsing from stdin");
              parseInputStream(stdin, filelist);
         }
-        if(filelist.empty())
+        
+        if(filelist.empty() && optind == argc)
         {
             file = fopen("./e4rat-collect.log", "r");
             if(NULL != file)
