@@ -857,7 +857,14 @@ void checkImprovement(Device& device, std::vector<OrigDonorPair>& files)
     frag_cnt_orig = fragmentCount(filelist);
     filelist.clear();
     
-    notice("Total fragment count before/afterwards:  %d/%d", frag_cnt_orig, frag_cnt_donor);
+    __u64 total_block_cnt = 0;
+    __u32 best_case;
+    BOOST_FOREACH(OrigDonorPair& odp, files)
+        total_block_cnt += odp.blocks;
+
+    best_case = total_block_cnt / device.freeBlocksPerFlex() + (bool)(total_block_cnt % device.freeBlocksPerFlex());
+
+    notice("Total fragment count before/afterwards/best-case:  %d/%d/%d", frag_cnt_orig, frag_cnt_donor, best_case);
     if(frag_cnt_donor >= frag_cnt_orig)
         if(Config::get<bool>("force") == false)
             throw std::runtime_error("There is no improvement possible.");
