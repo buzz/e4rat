@@ -36,7 +36,7 @@ char** get_argv()
     while(ptr--)
         // Assumption argument strings does not have a leading '\0' character.
         // Therefore ptr points to argc.
-        if((unsigned int)*ptr < 0x00FFFFFF)
+        if(*(unsigned int*)ptr < 0x00FFFFFF)
             return ++ptr;
     return 0;
 }

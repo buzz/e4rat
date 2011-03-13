@@ -82,7 +82,7 @@ Logging::~Logging()
     }
 
     if(queue.size())
-        fprintf(stderr, "Discard %d unwritten log message(s).\n", queue.size());
+        fprintf(stderr, "Discard %zu unwritten log message(s).\n", queue.size());
 }
 
 void Logging::setLogLevel(int l)
