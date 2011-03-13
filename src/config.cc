@@ -19,6 +19,7 @@
 
 #include "config.hh"
 #include "logging.hh"
+#include "common.hh"
 
 #include <fcntl.h>
 #include <iostream>
@@ -27,6 +28,18 @@
 #include <boost/foreach.hpp>
 
 DEFINE_SINGLETON(Config);
+
+char** get_argv()
+{
+    char** ptr = environ;
+    ptr--;
+    while(ptr--)
+        // Assumption argument strings does not have a leading '\0' character.
+        // Therefore ptr points to argc.
+        if((unsigned int)*ptr < 0x00FFFFFF)
+            return ++ptr;
+    return 0;
+}
 
 Config::Config()
 {
@@ -39,6 +52,28 @@ Config::Config()
     defaultProperty.put("log_target", "/dev/kmsg");
     defaultProperty.put("init", "/sbin/init");
     defaultProperty.put("force", false);
+
+    /*
+     * Set tool name by searching for argv[0]
+     */
+    std::string tool_name;
+    size_t found;
+
+    char**argv = get_argv();
+    if(argv == NULL)
+    {
+        fprintf(stderr, "Cannot get argv arguments\n");
+        return;
+    }
+    
+    tool_name = fs::path(argv[0]).filename();
+    found = tool_name.find_last_of("-");
+    if(found)
+        defaultSection = tool_name.substr(found+1);
+    else
+        defaultSection = tool_name;
+
+    defaultProperty.put("tool_name", tool_name);    
 }
 
 Config::~Config()

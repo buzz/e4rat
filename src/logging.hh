@@ -77,6 +77,7 @@ class Logging
         bool targetAvailable();
         void log2target(LogLevel level, const char* msg);
         bool redirectOut2Err;
+        bool displayToolName;
         std::string target;
         int loglevel;
         int verboselevel;

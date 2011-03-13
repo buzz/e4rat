@@ -55,7 +55,7 @@ void Logging::log2target(LogLevel level, const char* msg)
         FILE* file = fopen(target.c_str(), "wa");
         if(file)
         {
-            fprintf(file, "%s\n", msg);
+            fprintf(file, "[ %s ] %s\n", Config::get<std::string>("tool_name").c_str(), msg);
             fclose(file);
         }
     }
@@ -67,6 +67,11 @@ Logging::Logging()
     verboselevel = Error;
     loglevel = Error;
     openlog(NULL, LOG_PID, 0);
+    
+    if(getpid() == 1)
+        displayToolName = true;
+    else
+        displayToolName = false;
 }
 
 Logging::~Logging()
@@ -99,10 +104,16 @@ void Logging::write(LogLevel level, const char* format, ...)
     
     if((level & verboselevel))
     {
+        FILE* out;
         if(redirectOut2Err || level == Error || level == Warn)
-            fprintf(stderr, "%s\n", msg);
+            out = stderr;
         else
-            fprintf(stdout, "%s\n", msg);
+            out = stdout;
+        
+        if(displayToolName)
+            fprintf(out, "[ %s ] %s\n", Config::get<std::string>("tool_name").c_str(), msg);
+        else
+            fprintf(out, "%s\n", msg);
     }
 
     if(!(level & loglevel))
