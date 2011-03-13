@@ -451,10 +451,21 @@ int main(int argc, char* argv[])
 
     if(create_pid_late)
     {
-        createPidFile(PID_FILE);
-        sigaction(SIGALRM, &sa, NULL);
-        alarm(Config::get<unsigned int>("timeout"));
-        notice("Run `%s -k' to stop collecting files", Config::get<std::string>("tool_name").c_str());
+        bool pc = createPidFile(PID_FILE);
+        unsigned int timeout = Config::get<unsigned int>("timeout");
+        if(timeout)
+        {
+            sigaction(SIGALRM, &sa, NULL);
+            alarm(Config::get<unsigned int>("timeout"));
+            notice("%s quits after %d seconds", Config::get<std::string>("tool_name").c_str(), timeout);
+        }
+        else
+        {
+            if(pc == false)
+                notice("Signal collector to stop by calling `killall %s'");
+            else
+                notice("Signal collector to stop by calling `%s -k'", Config::get<std::string>("tool_name").c_str());
+        }
     }
     else
         notice("Press 'STR-C' to stop collecting files");
