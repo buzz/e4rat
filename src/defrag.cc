@@ -242,7 +242,7 @@ void Optimizer::relatedFiles(std::vector<fs::path>& files)
             notice("%*d/%d file(s) are not available",
                    (int)(log10(files.size())+1), files_unavailable, files.size());
         if(wrong_filesystem_type)
-            notice("%*d/%d file(s) not on an ext4 filesystem",
+            notice("%*d/%d file(s) not on an valid ext4 filesystem",
                    (int)(log10(files.size())+1), wrong_filesystem_type, files.size());
         if(invalid_file_type)
             notice("%*d/%d file(s) have invalid file type.",
@@ -801,8 +801,9 @@ __u32 fragmentCount(std::map<__u64, const char*> list)
     int fd;
     struct fiemap* fmap;
     __u32 frag_cnt = 0;
-    __u64 prev_block  = 0;
-        
+    __u64 last_block  = 0;
+    __u64 gap_size;
+    
     typedef std::pair<__u64, const char*> f_t;
     BOOST_FOREACH(f_t iter, list)
     {
@@ -814,14 +815,15 @@ __u32 fragmentCount(std::map<__u64, const char*> list)
  
         for(__u32 i = 0; i< fmap->fm_mapped_extents; i++)
         {
-            if(prev_block != fmap->fm_extents[i].fe_physical)
+            if(i == 0)
+                gap_size = fmap->fm_extents[i].fe_logical;
+            else
+                gap_size = fmap->fm_extents[i].fe_logical - fmap->fm_extents[i-1].fe_logical - fmap->fm_extents[i-1].fe_length;
+                    
+            if(last_block + gap_size != fmap->fm_extents[i].fe_physical)
                 frag_cnt++;
 
-            prev_block = fmap->fm_extents[i].fe_physical;
-            if(i > fmap->fm_mapped_extents)
-                prev_block += fmap->fm_extents[i+1].fe_logical - fmap->fm_extents[i].fe_logical;
-            else
-                prev_block += fmap->fm_extents[i].fe_length;
+            last_block = fmap->fm_extents[i].fe_physical + fmap->fm_extents[i].fe_length;
         }
         close(fd);
     }
@@ -850,8 +852,8 @@ void checkImprovement(Device& device, std::vector<OrigDonorPair>& files)
         if(fd < 0)
             continue;
         fmap = ioctl_fiemap(fd);
-
-        filelist.insert(std::pair<__u64, const char*>(fmap->fm_extents[0].fe_physical>>12, file));
+        if(fmap->fm_mapped_extents)
+            filelist.insert(std::pair<__u64, const char*>(fmap->fm_extents[0].fe_physical>>12, file));
         close(fd);
     }
 
@@ -865,8 +867,8 @@ void checkImprovement(Device& device, std::vector<OrigDonorPair>& files)
         if(fd < 0)
             continue;
         fmap = ioctl_fiemap(fd);
-
-        filelist.insert(std::pair<__u64, const char*>(fmap->fm_extents[0].fe_physical>>12, odp.origPath.string().c_str()));
+        if(fmap->fm_mapped_extents)
+            filelist.insert(std::pair<__u64, const char*>(fmap->fm_extents[0].fe_physical>>12, odp.origPath.string().c_str()));
         close(fd);
     }
 
