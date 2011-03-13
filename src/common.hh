@@ -31,39 +31,28 @@ namespace fs = boost::filesystem;
 void setStdIn2NonBlocking();
 
 /*
- * Path operations
+ * file operations
  */
 const boost::regex path2regex(std::string path);
 std::vector<std::string> matchPath( const std::string & filesearch );
 fs::path realpath(fs::path _path, fs::path _cwd = "");
-fs::path resolvSymLink(fs::path link);
-
-/*
- * operations on file descriptor
- */
-int funlink(int fd);
 std::string getPathFromFd(int fd);
 
 /*
- * get mount-point by parsing /etc/mtab
+ * pid file operations
  */
-int get_mount_point(const char *devname, char *mount_point,
-                           int dir_path_len);
-
 pid_t readPidFile(const char* path);
 bool createPidFile(const char* path);
 
 /*
- * UserInterrupt is an exception thrown on non-multi-threaded application
- * its job is to clean up memory and other system resources
- * throwing exception for interruption allows us to be compatible
- * with boost threads
+ * UserInterrupt is an exception thrown by non-multi-threaded applications.
+ * The idea behind exceptions is to clean up memory and other system resources.
  */
 class UserInterrupt : public std::exception
 {
     public:
         UserInterrupt()
-            : msg("User interrupt.")
+            : msg("User interrupt")
         {}
         virtual const char* what() const throw()
 
@@ -74,7 +63,10 @@ class UserInterrupt : public std::exception
         const char* msg;
 };
 
-class InterruptAble
+/*
+ * Declare class interruptible
+ */
+class Interruptible
 {
     public:
         static void interrupt();

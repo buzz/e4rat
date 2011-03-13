@@ -63,14 +63,11 @@ class AuditEvent
 
 /*
  * Linux Audit Listener Class
- * It directly connects to the Linux audit socket.
+ * It connects directly to the Linux audit socket.
  *
- * For each successfully parsed event signal eventParsed() is emitted.
- *
- * Derivate this class to implement interuptionPoint() method
- * which differ in single and multi-threaded applications.
+ * Signal eventParsed() is emitted on every successfully parsed event.
  */
-class AuditListener : public InterruptAble
+class AuditListener : public Interruptible
 {
         SIGNAL(eventParsed, boost::shared_ptr<AuditEvent>);
 

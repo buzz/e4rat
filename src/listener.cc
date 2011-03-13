@@ -610,7 +610,7 @@ Listener::~Listener()
 
 void Listener::stop()
 {
-    InterruptAble::interrupt();
+    Interruptible::interrupt();
 }
 
 void Listener::connect()

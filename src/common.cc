@@ -96,7 +96,7 @@ void signalHandler(int signum)
         exit(1);
     }
 
-    InterruptAble::interrupt();
+    Interruptible::interrupt();
 }
 
 /*
@@ -172,42 +172,6 @@ std::vector<std::string> matchPath( const std::string & filesearch )
 }
 
 /*
- * Run init process as parent process
- * Proceed execution on child process.
- */
-void run_init(int argc, char** argv, useconds_t delay)
-{
-    info("execute /sbin/init");
-    
-    pid_t pid_child = fork();
-    switch(pid_child)
-    {
-        case -1:
-            error("fork failed: %s", strerror(errno));
-            break;
-        case 0: //child process
-            break;
-        default:
-            usleep(delay);
-            execv("/sbin/init", argv);
-    }
-}
-
-/*
- * Unlink file on file descriptor
- */
-int funlink(int fd)
-{
-    char fd_path[PATH_MAX];
-    char fd_filename[PATH_MAX];
-    memset(fd_filename, '\0', PATH_MAX);
-    sprintf(fd_path, "/proc/self/fd/%d", fd);
-    if(0 > readlink(fd_path, fd_filename, PATH_MAX))
-        return -1;
-    return unlink(fd_filename);
-}
-
-/*
  * Determine full path.
  * If base path is empty use current_path() at the time of entry to main().
  * Resolve "." and ".." and merge with working directory
@@ -269,69 +233,6 @@ std::string getPathFromFd(int fd)
         
     readlink(__path2fd, __filename, PATH_MAX);
     return __filename;
-}
-   
-/*
- * get_mount_point() -  Get device's mount point.
- *
- * @devname:         the device's name.
- * @mount_point:     the mount point.
- * @dir_path_len:    the length of directory.
- */
-int get_mount_point(const char *devname, char *mount_point,
-                           int dir_path_len)
-{
-    /* Refer to /etc/mtab */
-    const char        *mtab = MOUNTED;
-    FILE        *fp = NULL;
-    struct mntent        *mnt = NULL;
-
-    fp = setmntent(mtab, "r");
-    if (fp == NULL) {
-        perror("Couldn't access /etc/mtab");
-        return -1;
-    }
-
-    while ((mnt = getmntent(fp)) != NULL) {
-        if (strcmp(devname, mnt->mnt_fsname) != 0)
-            continue;
-
-        endmntent(fp);
-        if (strcmp(mnt->mnt_type, "ext4") == 0) {
-            strncpy(mount_point, mnt->mnt_dir, dir_path_len);
-            return 0;
-        }
-    }
-    endmntent(fp);
-    return -1;
-}
-
-/*
- * Return path of resolved symbolic link
- */
-fs::path resolvSymLink(fs::path link)
-{
-  char buffer[PATH_MAX];
-  int len;
-
-  if(!link.has_root_directory())
-    throw std::logic_error(std::string("resolvSymLinks: ")
-                           + link.string()
-                           + ": is not absolut.");
-
-  if((len = readlink(link.string().c_str(), buffer, PATH_MAX)) != -1)
-    buffer[len] = '\0';
-  else
-  {
-    if(EINVAL == errno) //file is not a symbolic link. stop
-      return link;
-    else
-      throw std::runtime_error(link.string()
-                               + ": cannot receive symbolic link: "
-                               + strerror(errno));
-  }
-
-  return resolvSymLink(realpath(buffer, link.parent_path()));
 }
 
 /*
@@ -396,14 +297,14 @@ bool createPidFile(const char* path)
 }
 
 
-bool InterruptAble::interrupted = false;
+bool Interruptible::interrupted = false;
 
-void InterruptAble::interrupt()
+void Interruptible::interrupt()
 {
     interrupted = true;
 }
 
-void InterruptAble::interruptionPoint()
+void Interruptible::interruptionPoint()
 {
     if(interrupted)
         throw UserInterrupt();

@@ -40,7 +40,7 @@ struct OrigDonorPair
         __u64 blocks;
 };
 
-class Defrag : public InterruptAble
+class Defrag : public Interruptible
 {
         typedef std::vector<fs::path> filelist_t;
     protected:

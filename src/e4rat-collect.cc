@@ -454,9 +454,11 @@ int main(int argc, char* argv[])
         createPidFile(PID_FILE);
         sigaction(SIGALRM, &sa, NULL);
         alarm(Config::get<unsigned int>("timeout"));
+        notice("Run `%s -k' to stop collecting files", Config::get<std::string>("tool_name").c_str());
     }
+    else
+        notice("Press 'STR-C' to stop collecting files");
     info("Starting event processing ...");
-    notice("Press 'STR-C' to stop collecting files.");
     listener.start();
 
     filelist = project.getFileList();
