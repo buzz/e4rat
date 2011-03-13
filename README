@@ -35,10 +35,10 @@ parameters:
 After e4rat-collect has terminated the generated file list is stored at:
     /var/lib/e4rat/startup.log
 
-Before reallocating boot files it is recommaned to switch to runlevel S to
+Before reallocating boot files it is recommaned to switch to runlevel 1 to
 stop most of all running proceses to gain write access to the process binary
 file:
-    init S
+    init 1
     
 Reallocating boot files:
     e4rat-realloc  /var/lib/e4rat/startup.log
