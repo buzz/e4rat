@@ -103,8 +103,3 @@ void Config::clear()
 {
     ptree.clear();
 }
-
-void Config::setDefaultSection(std::string sec)
-{
-    defaultSection = sec;
-}

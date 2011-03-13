@@ -77,6 +77,7 @@ int main(int argc, char* argv[])
     Optimizer optimizer;
 
     Config::instance()->load();
+    
     int loglevel = Config::get<int>("loglevel");
     int verbose  = Config::get<int>("verbose");
 

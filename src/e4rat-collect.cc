@@ -175,7 +175,6 @@ int main(int argc, char* argv[])
     bool create_pid_late = false;
     
     Config::instance()->load();
-    Config::instance()->setDefaultSection("collect");
 
     int loglevel = Config::get<int>("loglevel");
     int verbose  = Config::get<int>("verbose");

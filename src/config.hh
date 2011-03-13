@@ -47,7 +47,6 @@ class Config
         void load();
         void dump();
         void clear();
-        void setDefaultSection(std::string);
         template <typename T>
         void _set(std::string, T);
         template <typename T>

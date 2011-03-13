@@ -143,7 +143,6 @@ int main(int argc, char* argv[])
     flags = 0;
 
     Config::instance()->load();
-    Config::instance()->setDefaultSection("preload");
 
     int loglevel = Config::get<int>("loglevel");
     int verbose  = Config::get<int>("verbose");
