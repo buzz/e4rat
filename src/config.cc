@@ -28,7 +28,7 @@
 #include <boost/foreach.hpp>
 
 DEFINE_SINGLETON(Config);
-
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 char** get_argv()
 {
     char** ptr = environ;
@@ -40,6 +40,9 @@ char** get_argv()
             return ++ptr;
     return 0;
 }
+#else
+#pragma message "Byte order big endian not fully supported."
+#endif
 
 Config::Config()
 {
@@ -57,8 +60,9 @@ Config::Config()
      * Set tool name by searching for argv[0]
      */
     std::string tool_name;
-    size_t found;
 
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    size_t found;
     char**argv = get_argv();
     if(argv == NULL)
     {
@@ -72,6 +76,9 @@ Config::Config()
         defaultSection = tool_name.substr(found+1);
     else
         defaultSection = tool_name;
+#else
+    tool_name = PROGRAM_NAME;
+#endif
 
     defaultProperty.put("tool_name", tool_name);    
 }
