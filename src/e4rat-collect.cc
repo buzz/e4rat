@@ -455,7 +455,7 @@ int main(int argc, char* argv[])
         sigaction(SIGALRM, &sa, NULL);
         alarm(Config::get<unsigned int>("timeout"));
     }
-    notice("Starting event processing ...");
+    info("Starting event processing ...");
     notice("Press 'STR-C' to stop collecting files.");
     listener.start();
 
