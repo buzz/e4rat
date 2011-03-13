@@ -423,7 +423,7 @@ int main(int argc, char* argv[])
             case 0: //child process
                 if(0 != prctl(PR_SET_PDEATHSIG, SIGINT))
                     error("Set parent death signal: %s", strerror(errno));
-                notice("Connecting to the audit socket ...");
+                info("Connecting to the audit socket ...");
                 listener.connect();
                 if(0 != sem_post(sem))
                     error("sem_post: %s", strerror(errno));
@@ -457,11 +457,12 @@ int main(int argc, char* argv[])
         alarm(Config::get<unsigned int>("timeout"));
     }
     notice("Starting event processing ...");
+    notice("Press 'STR-C' to stop collecting files.");
     listener.start();
 
     filelist = project.getFileList();
     
-    notice("%d file(s) collected.", filelist.size());
+    notice("\t%d file(s) collected.", filelist.size());
 
     if(filelist.empty())
         goto out;
