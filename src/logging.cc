@@ -65,6 +65,8 @@ Logging::Logging()
         displayToolName = true;
     else
         displayToolName = false;
+
+    target = Config::get<std::string>("log_target");
 }
 
 Logging::~Logging()
@@ -74,7 +76,9 @@ Logging::~Logging()
     }
     catch(std::exception& e)
     {
-        fprintf(stderr, "Cannot dump log messages: %s: %s", target.c_str(), e.what());
+        fprintf(stderr, "Cannot dump log messages: %s: %s\n",
+                target.c_str(),
+                e.what());
     }
 
     if(queue.size())
@@ -89,11 +93,6 @@ void Logging::setLogLevel(int l)
 void Logging::setVerboseLevel(int v)
 {
     verboselevel = v;
-}
-
-void Logging::setTarget(std::string path)
-{
-    target = path;
 }
 
 void Logging::dumpQueue()
@@ -131,10 +130,8 @@ void Logging::write(LogLevel level, const char* format, ...)
     if(!(level & loglevel))
         goto out;
 
-    if(target.empty())
-        target = Config::get<std::string>("log_target");
-
     try {
+        target = Config::get<std::string>("log_target");
         dumpQueue();
         log2target(level, msg);
     }

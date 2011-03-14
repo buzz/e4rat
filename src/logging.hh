@@ -68,7 +68,6 @@ class Logging
         ~Logging();
         void setLogLevel(int l);
         void setVerboseLevel(int v);
-        void setTarget(std::string);
         void write(LogLevel level, const char* format, ...);
         void errStream(FILE*);
         void outStream(FILE*);
@@ -79,9 +78,13 @@ class Logging
         void log2target(LogLevel level, const char* msg);
         bool redirectOut2Err;
         bool displayToolName;
-        std::string target;
         int loglevel;
         int verboselevel;
+        /*
+         * Because the heap based Config object is destroyed a little earlier
+         * cache the target path to be able to dump queued messages in destructor
+         */
+        std::string target;
         std::deque<QueuedEvent> queue;
 };
 

@@ -84,9 +84,12 @@ T Config::_get(std::string opt)
 {
     boost::optional<T> value;
 
-    value = ptree.get_optional<T>(defaultSection + "." + opt);
-    if(value)
-        return *value;
+    if(defaultSection.size())
+    {
+        value = ptree.get_optional<T>(defaultSection + "." + opt);
+        if(value)
+            return *value;
+    }
     
     value = ptree.get_optional<T>(opt);
     if(value)
