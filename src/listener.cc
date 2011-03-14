@@ -534,16 +534,30 @@ void AuditListener::exec()
 {
     struct audit_reply reply;
     auparse_state_t *au;
-    boost::shared_ptr<AuditEvent> auditEvent(new AuditEvent);
-    
+    typedef std::map<__u32, boost::shared_ptr<AuditEvent> > msgdb_t;
+    msgdb_t msgdb;
+    msgdb_t::iterator msgdb_it;
+    boost::shared_ptr<AuditEvent> auditEvent;
+    __u32 msgid;
     while(1)
     {
         waitForEvent(&reply);
 
         reply.msg.data[reply.len] = '\0';
         au = initAuParse(&reply);
+
         debug("%d: %*s", reply.type, reply.len, reply.msg.data);
         
+        msgid = auparse_get_serial(au);
+        msgdb_it = msgdb.find(msgid);
+        if(msgdb_it != msgdb.end())
+            auditEvent = msgdb_it->second;
+        else
+        {
+            auditEvent =  boost::shared_ptr<AuditEvent>(new AuditEvent);
+            msgdb.insert(std::pair<__u32, boost::shared_ptr<AuditEvent> >(msgid, auditEvent));
+        }
+
         switch(reply.type)
         {
             // event is syscall event
@@ -584,8 +598,8 @@ void AuditListener::exec()
                     debug("Parsed Event: %d %ds", auditEvent->type, auditEvent->path.string().c_str());
                     eventParsed(auditEvent);
                 }
-
-                auditEvent = boost::shared_ptr<AuditEvent>(new AuditEvent);
+                
+                msgdb.erase(msgdb_it);
                 break;
             case AUDIT_CONFIG_CHANGE:
                 // The message does not contain what rules has been changed
@@ -600,8 +614,9 @@ void AuditListener::exec()
             default:
                 break;
         }
-        auparse_destroy(au);
+        auparse_reset(au);
     }
+    auparse_destroy(au);
 }
 
 
