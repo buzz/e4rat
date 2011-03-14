@@ -23,6 +23,10 @@
 #include <syslog.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 Logging logger;
 
 bool isSyslogDaemonRunning()
@@ -40,9 +44,19 @@ bool Logging::targetAvailable()
             return true;
     }
     else
+    {
         if(0 == access(target.c_str(), W_OK))
             return true;
 
+        if(target != "/dev/kmsg")
+        {
+            int fd = creat(target.c_str(), S_IWUSR | S_IRUSR );
+            if(fd < 0)
+                return false;
+            close(fd);
+            return true;
+        }
+    }
     return false;
 }
 
@@ -55,7 +69,7 @@ void Logging::log2target(LogLevel level, const char* msg)
         FILE* file = fopen(target.c_str(), "a");
         if(file)
         {
-            fprintf(file, "[ %s ] %s\n", Config::get<std::string>("tool_name").c_str(), msg);
+            fprintf(file, "[%s] %s\n", Config::get<std::string>("tool_name").c_str(), msg);
             fclose(file);
         }
     }
@@ -77,7 +91,7 @@ Logging::Logging()
 Logging::~Logging()
 {
     if(queue.size())
-        fprintf(stderr, "Discard %d unwritten log messages.\n", queue.size());
+        fprintf(stderr, "Discard %d unwritten log message(s).\n", queue.size());
 }
 
 void Logging::setLogLevel(int l)
@@ -113,7 +127,7 @@ void Logging::write(LogLevel level, const char* format, ...)
             out = stdout;
         
         if(displayToolName)
-            fprintf(out, "[ %s ] %s\n", Config::get<std::string>("tool_name").c_str(), msg);
+            fprintf(out, "[%s] %s\n", Config::get<std::string>("tool_name").c_str(), msg);
         else
             fprintf(out, "%s\n", msg);
     }

@@ -273,7 +273,7 @@ bool createPidFile(const char* path)
             return false;
         else if(errno == EROFS)
         {
-            error("Cannot create pid file %s on read-only filesystem. Continue.");
+            error("Cannot create pid file %s on read-only filesystem", path);
             return true;
         }
         else
