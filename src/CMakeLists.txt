@@ -34,13 +34,18 @@ find_package(Threads REQUIRED)
 set(${PROJECT_NAME}_LIBRARIES   ${${PROJECT_NAME}_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT})
 
-add_library(${PROJECT_NAME}-base STATIC
+add_library(${PROJECT_NAME}-core SHARED
         config.cc
         logging.cc
         common.cc
         fiemap.cc
         device.cc
     )
+
+set_target_properties(${PROJECT_NAME}-core  PROPERTIES
+        SOVERSION 0
+    )
+
 ADD_EXECUTABLE(${PROJECT_NAME}-collect
         e4rat-collect.cc
         fileptr.cc
@@ -66,27 +71,29 @@ IF(CMAKE_BUILD_TYPE STREQUAL "debug")
         
 TARGET_LINK_LIBRARIES(${PROJECT_NAME}-offsets
         ${${PROJECT_NAME}_LIBRARIES}
-        ${PROJECT_NAME}-base
+        ${PROJECT_NAME}-core
     )
 ENDIF(CMAKE_BUILD_TYPE STREQUAL "debug")
 
 TARGET_LINK_LIBRARIES(${PROJECT_NAME}-collect
     ${${PROJECT_NAME}_LIBRARIES}
-    ${PROJECT_NAME}-base
+    ${PROJECT_NAME}-core
     )
+
 TARGET_LINK_LIBRARIES(${PROJECT_NAME}-preload
     ${${PROJECT_NAME}_LIBRARIES}
-    ${PROJECT_NAME}-base
+    ${PROJECT_NAME}-core
     )
+
 TARGET_LINK_LIBRARIES(${PROJECT_NAME}-realloc
     ${${PROJECT_NAME}_LIBRARIES}
-    ${PROJECT_NAME}-base
+    ${PROJECT_NAME}-core
     )
 
 INSTALL(TARGETS ${PROJECT_NAME}-collect
                 ${PROJECT_NAME}-preload
                 ${PROJECT_NAME}-realloc
-                ${PROJECT_NAME}-base
+                ${PROJECT_NAME}-core
         RUNTIME DESTINATION "sbin"
         LIBRARY DESTINATION "lib"
         ARCHIVE DESTINATION "lib")
