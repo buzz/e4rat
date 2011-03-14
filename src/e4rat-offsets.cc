@@ -1,5 +1,5 @@
 /*
- * fileoffset.cc - display physical block allocation and their offset
+ * e4rat-offsets.cc - display physical block allocation and their offset
  *                 of a list of files
  *
  * Copyright (C) 2011 by Andreas Rid
@@ -48,7 +48,7 @@ class FileInfo : public boost::filesystem::path
 void printUsage()
 {
     std::cout <<
-        "Usage: fileoffset [file(s)]\n"
+        "Usage: "PROGRAM_NAME"-offsets [file(s)]\n"
         ;
 }
 int main(int argc, char* argv[])

@@ -74,6 +74,7 @@ class Logging
         void outStream(FILE*);
         void redirectStdout2Stderr(bool);
     private:
+        void dumpQueue();
         bool targetAvailable();
         void log2target(LogLevel level, const char* msg);
         bool redirectOut2Err;

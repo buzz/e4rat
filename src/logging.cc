@@ -67,6 +67,12 @@ Logging::Logging()
 
 Logging::~Logging()
 {
+    try {
+        dumpQueue();
+    }
+    catch(...)
+    {}
+
     if(queue.size())
         fprintf(stderr, "Discard %d unwritten log message(s).\n", queue.size());
 }
@@ -86,6 +92,15 @@ void Logging::setTarget(std::string path)
     target = path;
 }
 
+void Logging::dumpQueue()
+{
+    while(queue.size())
+    {
+        QueuedEvent& event = queue.front();
+        log2target(event.level, event.msg.c_str());
+        queue.pop_front();
+    }
+}
 void Logging::write(LogLevel level, const char* format, ...)
 {
 #define MSG_SIZE 8192
@@ -116,12 +131,7 @@ void Logging::write(LogLevel level, const char* format, ...)
         target = Config::get<std::string>("log_target");
 
     try {
-        while(queue.size())
-        {
-            QueuedEvent& event = queue.front();
-            log2target(event.level, event.msg.c_str());
-            queue.pop_front();
-        }
+        dumpQueue();
         log2target(level, msg);
     }
     catch(...)

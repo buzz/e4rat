@@ -60,11 +60,11 @@ ADD_EXECUTABLE(${PROJECT_NAME}-realloc
 
 
 IF(CMAKE_BUILD_TYPE STREQUAL "debug")
-    ADD_EXECUTABLE(fileoffset
-        fileoffset.cc
+    ADD_EXECUTABLE(${PROJECT_NAME}-offsets
+        e4rat-offsets.cc
     )
         
-    TARGET_LINK_LIBRARIES(fileoffset
+TARGET_LINK_LIBRARIES(${PROJECT_NAME}-offsets
         ${${PROJECT_NAME}_LIBRARIES}
         ${PROJECT_NAME}-base
     )
