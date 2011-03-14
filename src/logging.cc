@@ -29,49 +29,26 @@
 
 Logging logger;
 
-bool isSyslogDaemonRunning()
-{
-    if(0 == access(_PATH_LOG, F_OK))
-        return true;
-    return false;
-}
-
-bool Logging::targetAvailable()
-{
-    if(target == "syslog")
-    {
-        if(0 == access(_PATH_LOG, F_OK))
-            return true;
-    }
-    else
-    {
-        if(0 == access(target.c_str(), W_OK))
-            return true;
-
-        if(target != "/dev/kmsg")
-        {
-            int fd = creat(target.c_str(), S_IWUSR | S_IRUSR );
-            if(fd < 0)
-                return false;
-            close(fd);
-            return true;
-        }
-    }
-    return false;
-}
-
 void Logging::log2target(LogLevel level, const char* msg)
 {
     if(target == "syslog")
+    {
+        if(access(_PATH_LOG, F_OK))
+            throw std::exception();
         syslog((level/2)+2, msg);
+    }
     else
     {
+        if(target == "/dev/kmsg")
+            if(access(target.c_str(), W_OK))
+                throw std::runtime_error(strerror(errno));
+         
         FILE* file = fopen(target.c_str(), "a");
-        if(file)
-        {
-            fprintf(file, "[%s] %s\n", Config::get<std::string>("tool_name").c_str(), msg);
-            fclose(file);
-        }
+        if(!file)
+            throw std::runtime_error(strerror(errno));
+        
+        fprintf(file, "[%s] %s\n", Config::get<std::string>("tool_name").c_str(), msg);
+        fclose(file);
     }
 }
 
@@ -137,19 +114,20 @@ void Logging::write(LogLevel level, const char* format, ...)
 
     if(target.empty())
         target = Config::get<std::string>("log_target");
-    
-    if(targetAvailable())
-    {
+
+    try {
         while(queue.size())
         {
             QueuedEvent& event = queue.front();
-            queue.pop_front();
             log2target(event.level, event.msg.c_str());
+            queue.pop_front();
         }
         log2target(level, msg);
     }
-    else
+    catch(...)
+    {
         queue.push_back(QueuedEvent(level, msg));
+    }
     
 out:
     va_end(args);    
