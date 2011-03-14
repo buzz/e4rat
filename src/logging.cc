@@ -26,6 +26,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <string.h>
+#include <errno.h>
 
 Logging logger;
 
@@ -34,7 +36,7 @@ void Logging::log2target(LogLevel level, const char* msg)
     if(target == "syslog")
     {
         if(access(_PATH_LOG, F_OK))
-            throw std::exception();
+            throw std::runtime_error("syslog daemon is not running");
         syslog((level/2)+2, msg);
     }
     else
@@ -70,8 +72,10 @@ Logging::~Logging()
     try {
         dumpQueue();
     }
-    catch(...)
-    {}
+    catch(std::exception& e)
+    {
+        fprintf(stderr, "Cannot dump log messages: %s: %s", target.c_str(), e.what());
+    }
 
     if(queue.size())
         fprintf(stderr, "Discard %d unwritten log message(s).\n", queue.size());
