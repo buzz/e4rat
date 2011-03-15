@@ -71,3 +71,9 @@ add_custom_target(src
         COMMAND rsync -p --relative `git ls-files` ${PROJECT_NAME}-${E4RAT_VERSION}
         COMMAND tar pczf ${PROJECT_NAME}-${E4RAT_VERSION}-src.tar.gz ${PROJECT_NAME}-${E4RAT_VERSION}
         )
+
+
+INSTALL(FILES e4rat.conf.sample
+        DESTINATION "/etc"
+        RENAME e4rat.conf
+        )
