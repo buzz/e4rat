@@ -1029,7 +1029,12 @@ void Defrag::defragRelatedFiles(Device device, std::vector<OrigDonorPair>& files
                 after_frag_cnt = get_frag_count(orig_fd);
                 
                 if(after_frag_cnt != prev_frag_cnt)
-                    warn("Bug detected in ioctl EXT4_IOC_MOVE_EXT: %s: file fragment count does not match", odp.origPath.string().c_str());
+                {
+                    if(odp.blocks != get_block_count(orig_fd))
+                        warn("%s: File size has changed in the meantime.", odp.origPath.string().c_str());
+                    else
+                        warn("Bug detected in ioctl EXT4_IOC_MOVE_EXT: %s: file fragment count does not match", odp.origPath.string().c_str());
+                }
             }
             catch(std::exception& e)
             {
