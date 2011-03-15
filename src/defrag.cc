@@ -114,6 +114,7 @@ Defrag::Defrag()
     not_writable      = 0;
     not_extent_based  = 0;
     empty_files       = 0;
+    sparse_files      = 0;
 }
 Optimizer::Optimizer()
 {
@@ -256,6 +257,9 @@ void Optimizer::relatedFiles(std::vector<fs::path>& files)
         if(empty_files)
             notice("%*d/%d file(s) have no blocks.",
                    (int)(log10(files.size())+1), empty_files , files.size());
+        if(sparse_files)
+            notice("%*d/%d file(s) are sparse files.",
+                   (int)(log10(files.size())+1), sparse_files , files.size());
         
         if(filemap.empty())
             return;
@@ -311,6 +315,7 @@ void Defrag::checkFilesAttributes(std::vector<OrigDonorPair>& files)
 {
     struct stat st;
     int flags;
+    struct fiemap* fmap;
     
     BOOST_FOREACH(OrigDonorPair& odp, files)
     {
@@ -382,8 +387,9 @@ void Defrag::checkFilesAttributes(std::vector<OrigDonorPair>& files)
             goto cont;
         }
 
-        odp.blocks= get_block_count(fd);
-
+        fmap = ioctl_fiemap(fd);
+        odp.blocks= get_block_count(fmap);
+        
         if(0 == odp.blocks)
         {
             info("File %s has no blocks.", path);
@@ -391,6 +397,9 @@ void Defrag::checkFilesAttributes(std::vector<OrigDonorPair>& files)
             goto cont;
         }
 
+        odp.isSparseFile = is_sparse_file(fmap);
+        if(odp.isSparseFile)
+            sparse_files++;
 cont:        
         close(fd);
     }
@@ -549,38 +558,84 @@ void Defrag::createDonorFiles_PA(Device& device,
             throw std::runtime_error(std::string("Cannot open donor file: ")
                                  + odp.donorPath.string() + strerror(errno));
 
-        __u64 file_offset = 0;
-        do
+        if(odp.isSparseFile)
         {
-            if(free_space.len == 0)
-                free_space = findFreeSpace(device, 0, blk_count);
-
-            __u64 pa_blocks = std::min( odp.blocks - file_offset,
-                                             (__u64)free_space.len);
-        
-            try {
-                device.preallocate(fd,
-                            free_space.start,
-                            file_offset,
-                            pa_blocks,
-                            EXT4_MB_MANDATORY);
-                
-                file_offset      += pa_blocks;
-                blk_count        -= pa_blocks;
-                free_space.len   -= pa_blocks;
-                free_space.start += pa_blocks;
-            }
-            catch(Extent& e)
+            int orig_fd = open(odp.origPath.string().c_str(), O_RDONLY);
+            if(orig_fd < 0)
+                throw std::runtime_error(std::string("Cannot open orig file: ")
+                                         + odp.origPath.string() + strerror(errno));
+            struct fiemap* fmap = ioctl_fiemap(orig_fd);
+            close(orig_fd);
+            for(__u32 i = 0; i< fmap->fm_mapped_extents; i++)
             {
-                free_space = e;
+                __u64 offset = 0;
+                while(offset < fmap->fm_extents[i].fe_length / device.getBlockSize())
+                {
+                    if(free_space.len == 0)
+                        free_space = findFreeSpace(device, 0, blk_count);
+                    
+                    __u64 pa_blocks = std::min( fmap->fm_extents[i].fe_length / device.getBlockSize() - offset,
+                                                (__u64)free_space.len);
+                    
+                    try {
+                        // TODO
+                        device.preallocate(fd,
+                                           free_space.start,
+                                           fmap->fm_extents[i].fe_logical / device.getBlockSize() + offset,
+                                           pa_blocks,
+                                           EXT4_MB_MANDATORY);
+                        
+                        offset           += pa_blocks;
+                        blk_count        -= pa_blocks;
+                        free_space.len   -= pa_blocks;
+                        free_space.start += pa_blocks;
+                    }
+                    catch(Extent& e)
+                    {
+                        free_space = e;
+                    }
+                }
+                if(fallocate(fd, 0,
+                         fmap->fm_extents[i].fe_logical,
+                         fmap->fm_extents[i].fe_length))
+                    throw std::runtime_error(std::string("Cannot allocate blocks for donor: ")
+                                     + odp.donorPath.string() + strerror(errno));
             }
-    
-        } while(file_offset < odp.blocks);
+        }
+        else
+        {       
+            __u64 file_offset = 0;
+            do
+            {
+                if(free_space.len == 0)
+                    free_space = findFreeSpace(device, 0, blk_count);
+                
+                __u64 pa_blocks = std::min( odp.blocks - file_offset,
+                                            (__u64)free_space.len);
+                
+                try {
+                    device.preallocate(fd,
+                                       free_space.start,
+                                       file_offset,
+                                       pa_blocks,
+                                       EXT4_MB_MANDATORY);
+                    
+                    file_offset      += pa_blocks;
+                    blk_count        -= pa_blocks;
+                    free_space.len   -= pa_blocks;
+                    free_space.start += pa_blocks;
+                }
+                catch(Extent& e)
+                {
+                    free_space = e;
+                }
+                
+            } while(file_offset < odp.blocks);
 
-        if (fallocate(fd, 0, 0, odp.blocks * device.getBlockSize()) < 0)
-            throw std::runtime_error(
-                    std::string("Cannot allocate blocks for donor: ")
-                                + odp.donorPath.string() + strerror(errno));
+            if (fallocate(fd, 0, 0, odp.blocks * device.getBlockSize()) < 0)
+                throw std::runtime_error(std::string("Cannot allocate blocks for donor: ")
+                                         + odp.donorPath.string() + strerror(errno));
+        }
         close(fd);
     }
 }
@@ -815,14 +870,18 @@ __u32 fragmentCount(std::map<__u64, const char*> list)
  
         for(__u32 i = 0; i< fmap->fm_mapped_extents; i++)
         {
-            if(i == 0)
-                gap_size = fmap->fm_extents[i].fe_logical;
-            else
-                gap_size = fmap->fm_extents[i].fe_logical - fmap->fm_extents[i-1].fe_logical - fmap->fm_extents[i-1].fe_length;
-                    
-            if(last_block + gap_size != fmap->fm_extents[i].fe_physical)
-                frag_cnt++;
-
+            if(last_block != fmap->fm_extents[i].fe_physical)
+            {
+                // extent is not tied with last block
+                // the gap is the hole between unallocated space in a sparse file
+                if(i == 0)
+                    gap_size = fmap->fm_extents[i].fe_logical;
+                else
+                    gap_size = fmap->fm_extents[i].fe_logical - fmap->fm_extents[i-1].fe_logical - fmap->fm_extents[i-1].fe_length;
+                
+                if(gap_size == 0 || last_block + gap_size != fmap->fm_extents[i].fe_physical)
+                    frag_cnt++;
+            }   
             last_block = fmap->fm_extents[i].fe_physical + fmap->fm_extents[i].fe_length;
         }
         close(fd);

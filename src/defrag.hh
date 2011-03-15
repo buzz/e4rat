@@ -38,6 +38,7 @@ struct OrigDonorPair
         fs::path origPath;
         fs::path donorPath;
         __u64 blocks;
+        bool isSparseFile;
 };
 
 class Defrag : public Interruptible
@@ -69,6 +70,7 @@ class Defrag : public Interruptible
         int not_writable;
         int not_extent_based;
         int empty_files;
+        int sparse_files;
 };
 
 class Optimizer : public Defrag

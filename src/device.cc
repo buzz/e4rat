@@ -323,10 +323,13 @@ void Device::preallocate(int   fd,
         {
             if(errno == ENOTTY)
                 throw std::logic_error("Your actual Kernel does not support prefered block allocation.");
+            else if(errno == ENOSPC)
+                throw Extent(pi.pi_pstart, pi.pi_len);
             else
             {
                 std::stringstream ss;
                 ss << "Cannot preallocate blocks: "
+                   << getPathFromFd(fd)             << "\n"
                    << strerror(errno)               << "\n"
                    << "parameter:"                  << "\n"
                    << "\tfd:      " << fd           << "\n"

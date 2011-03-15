@@ -97,6 +97,21 @@ struct fiemap* get_fiemap(const char* file)
 }
 
 /*
+ * Test whether file is a sparse file
+ */
+bool is_sparse_file(struct fiemap* fmap)
+{
+    __u64 estimated = 0;
+    for(unsigned int j=0; j < fmap->fm_mapped_extents; j++)
+    {
+        if(fmap->fm_extents[j].fe_logical != estimated)
+            return true;
+        estimated += fmap->fm_extents[j].fe_length;
+    }
+    return false;
+}
+
+/*
  * Calculate the inode's logical size of used blocks on disk.
  * Sparse files may have holes of unallocated blocks between its extents.
  *
@@ -105,9 +120,11 @@ struct fiemap* get_fiemap(const char* file)
  */
 __u64 get_block_count(int fd)
 {
-    struct fiemap* fmap;
-    
-    fmap = ioctl_fiemap(fd, 0);
+    return get_block_count(ioctl_fiemap(fd));
+}
+
+__u64 get_block_count(struct fiemap* fmap)
+{
     if(NULL == fmap)
         return 0;
     
