@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.6)
 
 PROJECT(e4rat)
 
-set(E4RAT_VERSION   "0.1.2")
+set(E4RAT_VERSION   "0.1.3")
 
 IF( NOT CMAKE_BUILD_TYPE )
     SET( CMAKE_BUILD_TYPE "debug" )
