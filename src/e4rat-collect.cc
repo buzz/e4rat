@@ -457,7 +457,7 @@ int main(int argc, char* argv[])
         {
             sigaction(SIGALRM, &sa, NULL);
             alarm(Config::get<unsigned int>("timeout"));
-            notice("%s quits after %d seconds", Config::get<std::string>("tool_name").c_str(), timeout);
+            notice("Stop collecting files automatically after %d seconds", timeout);
         }
         else
         {
