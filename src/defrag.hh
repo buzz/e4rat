@@ -32,13 +32,13 @@
 
 struct OrigDonorPair
 {
-        OrigDonorPair() : blocks(0) {}
-        OrigDonorPair(fs::path p) : origPath(p), blocks(0) {}
+        OrigDonorPair() : blocks(0), isSparseFile(false) {}
+        OrigDonorPair(fs::path p) : origPath(p), blocks(0), isSparseFile(false) {}
 
         fs::path origPath;
         fs::path donorPath;
-        __u64 blocks;
-        bool isSparseFile;
+        __u64 blocks : 63;
+        __u64 isSparseFile : 1;
 };
 
 class Defrag : public Interruptible
