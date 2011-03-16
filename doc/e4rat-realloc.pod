@@ -53,7 +53,7 @@ force reallocating files even though it will get worse afterwards.
 
 =item -p --use-prealloc
 
-use the pre-allocation ioctl to rearrange files on disk. This ioctl is presently under heavy development by Kazuya Mio and has not yet entered the Linux Kernel. Therefore you have to apply this Kernel patch fist:
+use the pre-allocation ioctl to rearrange files on disk. Furthermore this mode supports to eliminate gaps of unallocated blocks in sparse files. Unfortunately, this ioctl is presently under heavy development by Kazuya Mio and has not yet entered the Linux Kernel. Therefore you have to apply this Kernel patch fist:
 http://kt1.osuosl.org/mailarchive/linux-fsdevel/2010/12/1/6887724
 Do this at your own risk.
 
