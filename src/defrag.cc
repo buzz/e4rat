@@ -579,8 +579,10 @@ void Defrag::createDonorFiles_PA(Device& device,
                 while(offset < fmap->fm_extents[i].fe_length / device.getBlockSize())
                 {
                     if(free_space.len == 0)
-                        free_space = findFreeSpace(device, 0, blk_count);
-                    
+                    {
+                        debug("Out of continued space: %s: will might fragmented", odp.origPath.string().c_str());
+                        free_space = findFreeSpace(device, free_space.start, blk_count);
+                    }
                     __u64 pa_blocks = std::min( fmap->fm_extents[i].fe_length / device.getBlockSize() - offset,
                                                 (__u64)free_space.len);
                     
@@ -615,8 +617,10 @@ void Defrag::createDonorFiles_PA(Device& device,
             do
             {
                 if(free_space.len == 0)
-                    free_space = findFreeSpace(device, 0, blk_count);
-                
+                {
+                    debug("Out of continued space: %s: will might fragmented", odp.origPath.string().c_str());
+                    free_space = findFreeSpace(device, free_space.start, blk_count);
+                }
                 __u64 pa_blocks = std::min( odp.blocks - file_offset,
                                             (__u64)free_space.len);
                 
