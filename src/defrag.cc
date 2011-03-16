@@ -257,9 +257,6 @@ void Optimizer::relatedFiles(std::vector<fs::path>& files)
         if(empty_files)
             notice("%*d/%d file(s) have no blocks.",
                    (int)(log10(files.size())+1), empty_files , files.size());
-        if(sparse_files)
-            notice("%*d/%d file(s) are sparse files.",
-                   (int)(log10(files.size())+1), sparse_files , files.size());
         
         if(filemap.empty())
             return;
@@ -279,6 +276,11 @@ void Optimizer::relatedFiles(std::vector<fs::path>& files)
                 throw std::logic_error("Kernel does not support pre-allocation");
         
         std::string mode = Config::get<std::string>("defrag_mode");
+
+        if(mode != "pa" && sparse_files)
+            notice("%*d/%d file(s) are sparse-files which will retain gaps of unallocated blocks.",
+                   (int)(log10(files.size())+1), sparse_files , files.size());
+        
         if(mode == "pa")
             mode = "pre-allocation";
         else if(mode == "locality_group")
@@ -399,7 +401,10 @@ void Defrag::checkFilesAttributes(Device device, std::vector<OrigDonorPair>& fil
 
         odp.isSparseFile = is_sparse_file(fmap);
         if(odp.isSparseFile)
+        {
+            info("%s is a sparse-file", path);
             sparse_files++;
+        }
 cont:        
         close(fd);
     }
