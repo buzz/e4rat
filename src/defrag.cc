@@ -598,6 +598,7 @@ void Defrag::createDonorFiles_PA(Device& device,
                     }
                     catch(Extent& e)
                     {
+                        debug("pre-allocate failed: %s: blocks are already in use", odp.origPath.string().c_str());
                         free_space = e;
                     }
                 }
@@ -633,6 +634,7 @@ void Defrag::createDonorFiles_PA(Device& device,
                 }
                 catch(Extent& e)
                 {
+                    debug("pre-allocate failed: %s: blocks are already in use", odp.origPath.string().c_str());
                     free_space = e;
                 }
                 
