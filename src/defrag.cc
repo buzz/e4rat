@@ -891,7 +891,7 @@ __u32 fragmentCount(std::map<__u64, const char*> list)
                 else
                     gap_size = fmap->fm_extents[i].fe_logical - fmap->fm_extents[i-1].fe_logical - fmap->fm_extents[i-1].fe_length;
                 
-                if(gap_size == 0 || last_block + gap_size != fmap->fm_extents[i].fe_physical)
+                if(gap_size == 0 || fmap->fm_extents[i].fe_physical - last_block > gap_size)
                     frag_cnt++;
             }   
             last_block = fmap->fm_extents[i].fe_physical + fmap->fm_extents[i].fe_length;
