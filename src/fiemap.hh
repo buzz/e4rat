@@ -75,7 +75,9 @@ struct fiemap {
 struct fiemap* ioctl_fiemap(int fd, unsigned int extent_count = 0);
 struct fiemap* get_fiemap(const char* file);
 bool is_sparse_file(struct fiemap* fmap);
-__u64 get_block_count(int fd);
-__u64 get_block_count(struct fiemap* fmap);
+__u64 get_allocated_file_size(const char* file);
+__u64 get_allocated_file_size(struct fiemap* fmap);
+__u64 get_file_size(int fd);
+__u64 get_file_size(struct fiemap* fmap);
 __u32 get_frag_count(int fd);
 #endif /* _LINUX_FIEMAP_H */

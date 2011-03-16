@@ -62,7 +62,7 @@ class Defrag : public Interruptible
                         Device& device,
                         std::vector<OrigDonorPair>& defragPair );
 
-        void checkFilesAttributes(std::vector<OrigDonorPair>&);
+        void checkFilesAttributes(Device device, std::vector<OrigDonorPair>&);
         
         void defragRelatedFiles(Device device, std::vector<OrigDonorPair>& files);
 

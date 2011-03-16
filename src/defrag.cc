@@ -234,7 +234,7 @@ void Optimizer::relatedFiles(std::vector<fs::path>& files)
         for(filemap_t::iterator it= filemap.begin();
             it != filemap.end();
             it++)
-            checkFilesAttributes(it->second);
+            checkFilesAttributes(it->first, it->second);
 
         /*
          * Display file statistics 
@@ -311,7 +311,7 @@ void Optimizer::relatedFiles(std::vector<fs::path>& files)
  * Sort out files move extent call will fail.
  * If file is valid OrigDonorPair::blocks is set
  */
-void Defrag::checkFilesAttributes(std::vector<OrigDonorPair>& files)
+void Defrag::checkFilesAttributes(Device device, std::vector<OrigDonorPair>& files)
 {
     struct stat st;
     int flags;
@@ -388,7 +388,7 @@ void Defrag::checkFilesAttributes(std::vector<OrigDonorPair>& files)
         }
 
         fmap = ioctl_fiemap(fd);
-        odp.blocks= get_block_count(fmap);
+        odp.blocks= get_file_size(fmap) / device.getBlockSize();
         
         if(0 == odp.blocks)
         {
@@ -543,7 +543,14 @@ void Defrag::createDonorFiles_PA(Device& device,
      */
     size_t blk_count = 0;
     BOOST_FOREACH(OrigDonorPair& odp, files)
-        blk_count += odp.blocks;
+    {
+        if(odp.blocks == 0)
+            continue;
+        if(odp.isSparseFile)
+            blk_count += get_allocated_file_size(odp.origPath.string().c_str()) / device.getBlockSize();
+        else
+            blk_count += odp.blocks;
+    }
 
 
     Extent free_space = findFreeSpace(device, 0, blk_count);
@@ -578,7 +585,6 @@ void Defrag::createDonorFiles_PA(Device& device,
                                                 (__u64)free_space.len);
                     
                     try {
-                        // TODO
                         device.preallocate(fd,
                                            free_space.start,
                                            fmap->fm_extents[i].fe_logical / device.getBlockSize() + offset,
@@ -1030,7 +1036,7 @@ void Defrag::defragRelatedFiles(Device device, std::vector<OrigDonorPair>& files
                 
                 if(after_frag_cnt != prev_frag_cnt)
                 {
-                    if(odp.blocks != get_block_count(orig_fd))
+                    if(odp.blocks != get_file_size(orig_fd) / device.getBlockSize())
                         warn("%s: File size has changed in the meantime.", odp.origPath.string().c_str());
                     else
                         warn("Bug detected in ioctl EXT4_IOC_MOVE_EXT: %s: file fragment count does not match", odp.origPath.string().c_str());

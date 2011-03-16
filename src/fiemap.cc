@@ -112,25 +112,46 @@ bool is_sparse_file(struct fiemap* fmap)
 }
 
 /*
- * Calculate the inode's logical size of used blocks on disk.
+ * return size in bytes
+ */
+
+__u64 get_allocated_file_size(const char* file)
+{
+    return get_allocated_file_size(get_fiemap(file));
+        
+}
+__u64 get_allocated_file_size(struct fiemap* fmap)
+{
+    __u64 result = 0;
+    
+    if(NULL == fmap)
+        return 0;
+
+    for(unsigned int j=0; j < fmap->fm_mapped_extents; j++)
+        result += fmap->fm_extents[j].fe_length;
+
+    return result;
+}
+/*
+ * Calculate the inode's logical size in Bytes.
  * Sparse files may have holes of unallocated blocks between its extents.
  *
  * The return value will inherit those blocks too. 
- * So the returned block count number can used to create an appropriate donor file. 
+ * So the returned number in Bytes can be used to create an appropriate donor file. 
  */
-__u64 get_block_count(int fd)
+__u64 get_file_size(int fd)
 {
-    return get_block_count(ioctl_fiemap(fd));
+    return get_file_size(ioctl_fiemap(fd));
 }
 
-__u64 get_block_count(struct fiemap* fmap)
+__u64 get_file_size(struct fiemap* fmap)
 {
     if(NULL == fmap)
         return 0;
     
     for(unsigned int j=0; j < fmap->fm_mapped_extents; j++)
         if(fmap->fm_extents[j].fe_flags & FIEMAP_EXTENT_LAST)
-            return (fmap->fm_extents[j].fe_logical + fmap->fm_extents[j].fe_length) >> 12;
+            return (fmap->fm_extents[j].fe_logical + fmap->fm_extents[j].fe_length);
     return 0;
 }
 
