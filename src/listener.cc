@@ -137,11 +137,15 @@ void AuditListener::insertAuditRules()
         if (-1 == audit_fd)
             error("Cannot open audit socket");
     }
-    else
-        removeAuditRules();
 
     memset(auditRuleData, '\0', sizeof(struct audit_rule_data));
 
+    /*
+     * Set arch name which was used at compile time
+     */
+    char machine_name[65];
+    strcpy(machine_name, "arch="MACHINE_NAME);
+    audit_rule_fieldpair_data(&auditRuleData, machine_name, AUDIT_FILTER_EXIT);
 
     /*
      * Apply Syscall rules

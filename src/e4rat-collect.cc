@@ -468,7 +468,7 @@ int main(int argc, char* argv[])
         }
     }
     else
-        notice("Press 'STR-C' to stop collecting files");
+        notice("Press 'Ctrl-C' to stop collecting files");
     info("Starting event processing ...");
     listener.start();
 
