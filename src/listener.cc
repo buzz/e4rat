@@ -40,6 +40,10 @@
 
 #include <boost/foreach.hpp>
 
+#ifdef __i386__
+#include <sys/utsname.h>
+#endif
+
 AuditEvent::AuditEvent()
 {
     ino = 0;
@@ -140,13 +144,23 @@ void AuditListener::insertAuditRules()
 
     memset(auditRuleData, '\0', sizeof(struct audit_rule_data));
 
+#ifdef __i386__
     /*
-     * Set arch name which was used at compile time
+     * Set machine name to solve 32/64 bit mismatch
      */
+    struct utsname un;
+    if(-1 == uname(&un))
+    {
+        error("Cannot receive machine name: %s", strerror(errno));
+        interrupt();
+        return;
+    }
+    
     char machine_name[65];
-    strcpy(machine_name, "arch="MACHINE_NAME);
+    strcpy(machine_name, "arch=");
+    strcat(machine_name, un.machine);
     audit_rule_fieldpair_data(&auditRuleData, machine_name, AUDIT_FILTER_EXIT);
-
+#endif
     /*
      * Apply Syscall rules
      */
