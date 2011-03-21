@@ -39,10 +39,7 @@
 #include <sys/vfs.h>
 
 #include <boost/foreach.hpp>
-
-#ifdef __i386__
 #include <sys/utsname.h>
-#endif
 
 AuditEvent::AuditEvent()
 {
@@ -54,17 +51,12 @@ AuditEvent::AuditEvent()
 
 AuditListener::AuditListener()
 {
-    auditRuleData =  (struct audit_rule_data*)malloc(sizeof( struct audit_rule_data));
-    memset(auditRuleData, 0, sizeof(struct audit_rule_data));
-    auditFlags = AUDIT_FILTER_EXIT;
-    auditAction = AUDIT_ALWAYS;
     audit_fd = -1;
     ext4_only = false;
 }
 
 AuditListener::~AuditListener()
 {
-    free(auditRuleData);
 }
 
 void AuditListener::excludePath(std::string path)
@@ -127,79 +119,100 @@ void AuditListener::watchFileSystemType(long t)
     watch_fs_types.insert(t);
 }
 
+void addSyscall(struct audit_rule_data* rule, const char* sc, int machine)
+{
+    int syscall_nr;
+    syscall_nr = audit_name_to_syscall(sc, machine);
+    if(syscall_nr == -1)
+        throw std::logic_error("Cannot convert syscall to number");
+
+    audit_rule_syscall_data(rule, syscall_nr);
+}
+
+void addAllSyscalls(struct audit_rule_data* rule, int machine)
+{
+    addSyscall(rule, "execve", machine);
+    addSyscall(rule, "open", machine);
+    addSyscall(rule, "openat", machine);
+    addSyscall(rule, "truncate", machine);
+    if(machine == MACH_X86)
+        addSyscall(rule, "truncate64", machine);
+    addSyscall(rule, "creat", machine);
+    addSyscall(rule, "mknod", machine);
+    addSyscall(rule, "fork", machine);
+    addSyscall(rule, "vfork", machine);
+    addSyscall(rule, "clone", machine);
+}
+
+void AuditListener::activateRules(int machine)
+{
+    char field[128];
+    struct audit_rule_data* rule = (struct audit_rule_data*) calloc(1, sizeof(audit_rule_data));
+
+    addAllSyscalls(rule, machine);
+
+#if 0
+    /*
+     * TODO: filetype=file works in most cases but there is a stupid pid file
+     *       that's creation does not get logged. Don't know why.
+     */ 
+    strcpy(field, "filetype=file");
+    audit_rule_fieldpair_data(&rule, field, AUDIT_FILTER_EXIT);
+#endif
+
+    /*
+     * Restrict to successful syscall events
+     */
+    strcpy(field, "success=1");
+    if(0 > audit_rule_fieldpair_data(&rule, field, AUDIT_FILTER_EXIT))
+        error("audit_rule_fieldpair_data failed: %s", field);
+
+    /*
+     * Specify arch
+     */
+    strcpy(field, "arch=");
+    strcat(field, audit_machine_to_name(machine));
+    if(0 > audit_rule_fieldpair_data(&rule, field, AUDIT_FILTER_EXIT))
+        error("audit_rule_fieldpair_data failed: %s", field);
+
+    /*
+     * Insert rule
+     */
+    if ( 0 >= audit_add_rule_data(audit_fd, rule, AUDIT_FILTER_EXIT, AUDIT_ALWAYS))
+        error("Cannot insert rules: %s", strerror(errno));
+    
+    rule_vec.push_back(rule);
+}
+
 /*
  * Apply audit rules to AUDIT_FILTER_EXIT filter.
  * Monitor all syscalls initialize or perfrom file accesses.  
  */
 void AuditListener::insertAuditRules()
 {
-    int action = AUDIT_ALWAYS;
-
     if(audit_fd < 0)
     {
         audit_fd = audit_open();
         if (-1 == audit_fd)
-            error("Cannot open audit socket");
+            throw std::logic_error("Cannot open audit socket");
     }
 
-    memset(auditRuleData, '\0', sizeof(struct audit_rule_data));
+    struct utsname uts;
+    if(-1 == uname(&uts))
+        throw std::logic_error(std::string("Cannot receive machine hardware name") + strerror(errno));
 
-#ifdef __i386__
-    /*
-     * Set machine name to solve 32/64 bit mismatch
-     * 64-Bit Linux kernel can execute both 32 and 64 Bit executables.
-     * Set the machine name to inform Linux Audit that all syscall numbers refer to 32 Bit environment.
-     */
-    struct utsname un;
-    if(-1 == uname(&un))
+    if(0 == strcmp(uts.machine, "x86_64"))
     {
-        error("Cannot receive machine name: %s", strerror(errno));
-        interrupt();
-        return;
+        activateRules(MACH_86_64);
+        activateRules(MACH_X86);
     }
-
-    char machine_name[65];
-    strcpy(machine_name, "arch=");
-    strcat(machine_name, un.machine);
-    debug("Specify machine name: "MACHINE_NAME"\n");
-    audit_rule_fieldpair_data(&auditRuleData, machine_name, AUDIT_FILTER_EXIT);
-#endif
-
-    /*
-     * Apply Syscall rules
-     */
-    audit_rule_syscallbyname_data(auditRuleData, "execve");
-    audit_rule_syscallbyname_data(auditRuleData, "open");
-    audit_rule_syscallbyname_data(auditRuleData, "openat");
-    audit_rule_syscallbyname_data(auditRuleData, "truncate");
-#ifdef __i386__
-    audit_rule_syscallbyname_data(auditRuleData, "truncate64");
-#endif
-    audit_rule_syscallbyname_data(auditRuleData, "creat");
-    audit_rule_syscallbyname_data(auditRuleData, "mknod");
-    audit_rule_syscallbyname_data(auditRuleData, "fork");
-    audit_rule_syscallbyname_data(auditRuleData, "vfork");
-    audit_rule_syscallbyname_data(auditRuleData, "clone");
-    /*
-     * Restrict file access to regular files
-     */
-    char filetype[128];
-#if 0
-    /*
-     * TODO: filetype=file works in most cases but there is a stupid pid file
-     *       that's creation does not get logged. Don't know why.
-     */ 
-    strcpy(filetype, "filetype=file");
-    audit_rule_fieldpair_data(&auditRuleData, filetype, AUDIT_FILTER_EXIT);
-#endif
-    /*
-     * Restrict to successful syscall events
-     */
-    strcpy(filetype, "success=1");
-    audit_rule_fieldpair_data(&auditRuleData, filetype, AUDIT_FILTER_EXIT);
-    
-    if ( 0 >= audit_add_rule_data(audit_fd, auditRuleData, AUDIT_FILTER_EXIT, action))
-        error("Cannot insert rules: %s", strerror(errno));
+    else
+    {
+        int machine = audit_name_to_machine(uts.machine);
+        if(-1 == machine)
+            throw std::logic_error(std::string("Unknown machine hardware name ")+ uts.machine);
+        activateRules(machine);
+    }
 
     if(0 > audit_set_pid(audit_fd, getpid(), WAIT_YES))
         error("Cannot set pid to audit");
@@ -218,13 +231,18 @@ void AuditListener::removeAuditRules()
     if (audit_fd < 0)
         return;
 
-    if ( 0 > audit_delete_rule_data(audit_fd,
-                                    auditRuleData,
-                                    AUDIT_FILTER_EXIT,
-                                    AUDIT_ALWAYS))
+    BOOST_FOREACH(struct audit_rule_data* rule, rule_vec)
     {
-        debug("Cannot remove rules: %s", strerror(errno));
+        if ( 0 > audit_delete_rule_data(audit_fd,
+                                        rule,
+                                        AUDIT_FILTER_EXIT,
+                                        AUDIT_ALWAYS))
+        {
+            debug("Cannot remove rules: %s", strerror(errno));
+        }
+        free(rule);
     }
+    rule_vec.clear();
 }
 
 void AuditListener::closeAuditSocket()
@@ -381,6 +399,7 @@ void AuditListener::parsePathEvent(auparse_state_t* au, boost::shared_ptr<AuditE
         // path exists but inode does not fit to the event
         // this could also happen when a file got renamed
         // this probably results of using the glib function: g_file_set_content
+        // or file access out of a chroot environment
         debug("syscall %d", auditEvent->type);
         debug("exe     %s", auditEvent->exe.string().c_str());
         debug("Inode Number differ! %s i_event: %u, d_event: %u - i_real: %u, d_real: %u",
@@ -396,37 +415,57 @@ void AuditListener::parsePathEvent(auparse_state_t* au, boost::shared_ptr<AuditE
  */
 void AuditListener::parseSyscallEvent(auparse_state_t* au, boost::shared_ptr<AuditEvent> auditEvent)
 {
+    __u64 arch; 
+    int machine;
     int syscall;
-    
+
     //notice: you have to read audit message fields in the right order
+
+    arch = strtoll(parseField(au, "arch").c_str(), NULL, 16);
     syscall = strtol(parseField(au, "syscall").c_str(), NULL, 10);
-    switch(syscall)
+
+    machine = audit_elf_to_machine(arch);
+    if(-1 == machine)
     {
-        case __NR_open:                        
-            auditEvent->type = Open;     break;
-        case __NR_execve:
-            auditEvent->type = Execve;   break;
-        case __NR_openat:
-            auditEvent->type = OpenAt;   break;
-        case __NR_unlink:
-        case __NR_link:
-        case __NR_rename:
-        case __NR_truncate:
-#ifdef __i386__
-        case __NR_truncate64:
-#endif
-            auditEvent->type = Truncate; break;
-        case __NR_creat:
-        case __NR_mknod:
-            auditEvent->type = Creat;   break;
-        case __NR_fork:
-        case __NR_vfork:
-        case __NR_clone:
-            auditEvent->type = Fork; break;
-        default:
-            auditEvent->type = Unknown;
-            debug("unknown syscall: %d", syscall);
-            return;
+        error("audit_elf_to_machine failed: arch=%x: %s", arch, strerror(errno));
+        auditEvent->type = Unknown;
+        return;
+    }
+    
+    const char* sc_name = audit_syscall_to_name(syscall, machine);
+
+    if(NULL == sc_name)
+    {
+        error("audit_syscall_to_name failed: machine=%d arch=%x", machine, arch);
+        auditEvent->type = Unknown;
+        return;
+    }
+    
+    if(0 == strcmp(sc_name, "open"))
+        auditEvent->type = Open;
+    else if(0 == strcmp(sc_name, "clone"))
+        auditEvent->type = Fork;
+    else if(0 == strcmp(sc_name, "execve"))
+        auditEvent->type = Execve;
+    else if(0 == strcmp(sc_name, "openat"))
+        auditEvent->type = Open;
+    else if(0 == strcmp(sc_name, "truncate"))
+        auditEvent->type = Truncate;
+    else if(0 == strcmp(sc_name, "creat"))
+        auditEvent->type = Creat;
+    else if(0 == strcmp(sc_name, "mknod"))
+        auditEvent->type = Creat;
+    else if(0 == strcmp(sc_name, "fork"))
+        auditEvent->type = Fork;
+    else if(0 == strcmp(sc_name, "vfork"))
+        auditEvent->type = Fork;
+    else if(0 == strcmp(sc_name, "truncate64"))
+        auditEvent->type = Truncate;
+    else
+    {
+        notice("Unknown syscall: %s = %d", sc_name, syscall);
+        auditEvent->type = Unknown;
+        return;
     }
     
     if("yes" == parseField(au, "success"))
@@ -652,7 +691,14 @@ void Listener::stop()
 
 void Listener::connect()
 {
-    insertAuditRules();
+    try {
+        insertAuditRules();
+    }
+    catch(std::exception&e)
+    {
+        error("%s", e.what());
+        interrupt();
+    }
 }
 
 void Listener::start()

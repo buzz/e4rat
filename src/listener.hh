@@ -88,6 +88,7 @@ class AuditListener : public Interruptible
         std::string parseField(auparse_state_t*, const char*);
         std::string parsePathField(auparse_state_t*, const char*);
     private:
+        void activateRules(int machine);
         void waitForEvent(struct audit_reply* reply);
         auparse_state_t* initAuParse(struct audit_reply*);
         void parseCwdEvent(auparse_state_t*, boost::shared_ptr<AuditEvent>);
@@ -97,7 +98,7 @@ class AuditListener : public Interruptible
         bool ignoreDevice(dev_t dev);
         bool checkFileSystemType(fs::path& p);
 
-        struct audit_rule_data* auditRuleData;
+        std::vector<struct audit_rule_data*> rule_vec;
         int auditFlags;
         int auditAction;                
         int audit_fd;
