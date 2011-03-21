@@ -147,6 +147,8 @@ void AuditListener::insertAuditRules()
 #ifdef __i386__
     /*
      * Set machine name to solve 32/64 bit mismatch
+     * 64-Bit Linux kernel can execute both 32 and 64 Bit executables.
+     * Set the machine name to inform Linux Audit that all syscall numbers refer to 32 Bit environment.
      */
     struct utsname un;
     if(-1 == uname(&un))
@@ -155,12 +157,14 @@ void AuditListener::insertAuditRules()
         interrupt();
         return;
     }
-    
+
     char machine_name[65];
     strcpy(machine_name, "arch=");
     strcat(machine_name, un.machine);
+    debug("Specify machine name: "MACHINE_NAME"\n");
     audit_rule_fieldpair_data(&auditRuleData, machine_name, AUDIT_FILTER_EXIT);
 #endif
+
     /*
      * Apply Syscall rules
      */
