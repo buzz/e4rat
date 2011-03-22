@@ -122,24 +122,28 @@ Optimizer::Optimizer()
 
 /*
  * Check weather your Linux Kernel supports pre-allocation ioctl on device.
- * This function will fail if filesystem is not an ext4 or your kernel does
- * not support pre-allocation ioctl.
+ * Specify a regular file on device. Otherwise it will fail.
+ * This function will fail too if filesystem is not an ext4 or your kernel
+ * does not support pre-allocation ioctl.
  *
  * Don't worry. It's just a dummy call. The filesystem remains unaffected.
  *
  * Return: true  on success
  *         otherwise  false
  */
-bool Defrag::doesKernelSupportPA(Device device)
+bool Defrag::doesKernelSupportPA(const char* file)
 {
     int ret = true;
     int fd;
     
-    fd = open(device.getMountPoint().string().c_str(), O_RDONLY);
+    if(file == NULL)
+        return false;
+
+    fd = open(file, O_RDONLY);
     if(0 > fd)
     {
-        error("Cannot open mount point: %s: %s", 
-                device.getMountPoint().string().c_str(), strerror(errno));
+        error("Cannot pre-allocation support: Cannot open file on device: %s: %s", 
+              file, strerror(errno));
         return false;
     }
     
@@ -148,11 +152,16 @@ bool Defrag::doesKernelSupportPA(Device device)
     pa_list->pl_count = 1;
     
     if(0 > ioctl(fd, EXT4_IOC_GET_PA, pa_list))
-        if(errno == ENOTTY)
+    {
+        debug("Does kernel support pre-alloc: %s: %d %s",file, errno, strerror(errno));
+
+        // ext4 32bit compat mode returns EINVAl on failure as well as ioctl does not exist
+        // non combat mode is more clear which returns ENOTTY if ioctl is not supported
+        if(errno == ENOTTY || errno == EINVAL)
             ret = false;
-
+    }
     close(fd);
-
+    free(pa_list);
     return ret;
 }
 
@@ -264,19 +273,28 @@ void Optimizer::relatedFiles(std::vector<fs::path>& files)
         /*
          * Apply defrag mode
          */
-        if("auto" == Config::get<std::string>("defrag_mode"))
+        std::string mode = Config::get<std::string>("defrag_mode");
+        if("auto" == mode
+            || "pa" == mode)
         {
-            if(doesKernelSupportPA(filemap.begin()->first))
+            bool ret;
+            const char* file = NULL;
+            BOOST_FOREACH(OrigDonorPair& odp, filemap.begin()->second)
+                if(odp.blocks)
+                {
+                    file = odp.origPath.string().c_str();
+                    break;
+                }
+            ret = doesKernelSupportPA(file);
+            if("auto" == mode && ret)
                 Config::set<std::string>("defrag_mode", "pa");
+            else if("pa" == mode && !ret)
+                throw std::logic_error("Kernel does not support pre-allocation");
             else
                 Config::set<std::string>("defrag_mode", "locality_group");
         }
-        else if("pa" == Config::get<std::string>("defrag_mode"))
-            if(!doesKernelSupportPA(filemap.begin()->first))
-                throw std::logic_error("Kernel does not support pre-allocation");
-        
-        std::string mode = Config::get<std::string>("defrag_mode");
 
+        mode = Config::get<std::string>("defrag_mode");
         if(mode != "pa" && sparse_files)
             notice("%*d/%d file(s) are sparse-files which will retain gaps of unallocated blocks.",
                    (int)(log10(files.size())+1), sparse_files , files.size());
