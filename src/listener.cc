@@ -129,8 +129,11 @@ void addSyscall(struct audit_rule_data* rule, const char* sc, int machine)
     audit_rule_syscall_data(rule, syscall_nr);
 }
 
-void addAllSyscalls(struct audit_rule_data* rule, int machine)
+void AuditListener::activateRules(int machine)
 {
+    char field[128];
+    struct audit_rule_data* rule = (struct audit_rule_data*) calloc(1, sizeof(audit_rule_data));
+
     addSyscall(rule, "execve", machine);
     addSyscall(rule, "open", machine);
     addSyscall(rule, "openat", machine);
@@ -142,14 +145,6 @@ void addAllSyscalls(struct audit_rule_data* rule, int machine)
     addSyscall(rule, "fork", machine);
     addSyscall(rule, "vfork", machine);
     addSyscall(rule, "clone", machine);
-}
-
-void AuditListener::activateRules(int machine)
-{
-    char field[128];
-    struct audit_rule_data* rule = (struct audit_rule_data*) calloc(1, sizeof(audit_rule_data));
-
-    addAllSyscalls(rule, machine);
 
 #if 0
     /*
