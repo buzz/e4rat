@@ -42,6 +42,8 @@
 #include <linux/unistd.h>
 #include <sys/resource.h>
 
+#define gettid() syscall(__NR_gettid)
+
 /*
  * Create a temporary file in directory dir with size in bytes.
  * On success return the new file path
@@ -727,7 +729,22 @@ void Defrag::createDonorFiles_LocalityGroup(Device& device,
          * TODO: fill up previous locality group on an effective way
          */
         //fillUpLocalityGroup(device);
+
+        /*
+         * Set CPU affinity
+         */
+        cpu_set_t cur_sched_mask;
+        cpu_set_t new_sched_mask;
+
+        CPU_ZERO(&new_sched_mask);
+        CPU_SET(0, &new_sched_mask);
+        int ret_get_affinity;
+        if(0 > (ret_get_affinity = sched_getaffinity(gettid(), sizeof(cpu_set_t), &cur_sched_mask)))
+            warn("Cannot receive process's CPU affinity mask: %s", strerror(errno));
+        if(0 > sched_setaffinity(gettid(), sizeof(cpu_set_t), &new_sched_mask))
+            warn("Cannot set process's CPU affinity mask to 1: %s", strerror(errno));
         
+                 
         /*
          * Allocating donor files in locality group
          */
@@ -740,6 +757,13 @@ void Defrag::createDonorFiles_LocalityGroup(Device& device,
                                            odp.blocks*device.getBlockSize());
         }
 
+        /*
+         * Restore CPU affinity
+         */
+        if(ret_get_affinity == 0)
+            if(0 > sched_setaffinity(gettid(), sizeof(new_sched_mask), &new_sched_mask))
+                warn("Cannot restore process's CPU affinity: %s", strerror(errno));
+        
         /*
          * Reset tuning parameters
          */
