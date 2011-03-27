@@ -37,7 +37,7 @@ void Logging::log2target(LogLevel level, const char* msg)
     {
         if(access(_PATH_LOG, F_OK))
             throw std::runtime_error("syslog daemon is not running");
-        syslog((level/2)+2, msg);
+        syslog((level/2)+2, msg, NULL);
     }
     else
     {
