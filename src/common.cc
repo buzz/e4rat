@@ -22,6 +22,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <linux/fs.h>
 #include <ext2fs/ext2fs.h>
 #include <ext2fs/ext2_fs.h>
@@ -231,7 +232,14 @@ std::string getPathFromFd(int fd)
     memset(__filename, '\0', PATH_MAX);
     sprintf(__path2fd, "/proc/self/fd/%d", fd);
         
-    readlink(__path2fd, __filename, PATH_MAX);
+    if(-1 == readlink(__path2fd, __filename, PATH_MAX))
+    {
+        std::stringstream ss;
+        ss << "Cannot readlink: "
+           << fd
+           << ": " << strerror(errno);
+        throw std::runtime_error(ss.str());
+    }
     return __filename;
 }
 
@@ -266,7 +274,7 @@ pid_t readPidFile(const char* path)
  */ 
 bool createPidFile(const char* path)
 {
-    int fd = open(path, O_CREAT | O_EXCL | O_WRONLY);
+    int fd = open(path, O_CREAT | O_EXCL | O_WRONLY, 0700);
     if(-1 == fd)
     {
         if(errno == EEXIST)

@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 
+set(CMAKE_VERBOSE_MAKEFILE              off)
+
 PROJECT(e4rat)
 
 set(E4RAT_VERSION   "0.1.4")

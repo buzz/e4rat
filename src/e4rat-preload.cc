@@ -354,7 +354,10 @@ int main(int argc, char* argv[])
                 break;
             default:
                 if(execute)
-                    system(execute);
+                {
+                    if(-1 == system(execute))
+                        error("system: %s", strerror(errno));
+                }
                 else
                   execv(Config::get<std::string>("init").c_str(), argv);
 

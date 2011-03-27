@@ -1,18 +1,24 @@
 cmake_minimum_required(VERSION 2.6)
-set(CMAKE_VERBOSE_MAKEFILE              off)
 
 # test weather variables from top level directories are missing
 IF( NOT CMAKE_BUILD_TYPE )
   MESSAGE(FATAL_ERROR "Do not run cmake on subdirectories")
 ENDIF()
 
-set(CMAKE_CXX_FLAGS_GLOBAL       "-Wall -Wno-deprecated -DPROGRAM_NAME=\\\"${PROJECT_NAME}\\\" -DVERSION=\\\"${E4RAT_VERSION}\\\"")
-set(CMAKE_CXX_FLAGS_RELEASE      "${CMAKE_CXX_FLAGS_GLOBAL} -O2")
-set(CMAKE_CXX_FLAGS_DEBUG        "${CMAKE_CXX_FLAGS_GLOBAL} -ggdb -DDEBUG_ENABLED")
+add_definitions(-Wall)
+add_definitions(-DPROGRAM_NAME=\"${PROJECT_NAME}\")
+add_definitions(-DVERSION=\"${E4RAT_VERSION}\")
+IF(CMAKE_BUILD_TYPE STREQUAL "release")
+    add_definitions(-O2)
+else(CMAKE_BUILD_TYPE STREQUAL "release")
+    add_definitions(-ggdb -DDEBUG_ENABLED)
+endif(CMAKE_BUILD_TYPE STREQUAL "release")
 
 SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 SET(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/..)
 SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/..)
+
+add_definitions(-D_FORTIFY_SOURCE=2)
 
 ##
 # Set RPATH to find shared library
