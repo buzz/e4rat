@@ -10,6 +10,7 @@ add_definitions(-DPROGRAM_NAME=\"${PROJECT_NAME}\")
 add_definitions(-DVERSION=\"${E4RAT_VERSION}\")
 IF(CMAKE_BUILD_TYPE STREQUAL "release")
     add_definitions(-O2)
+    add_definitions(-D_FORTIFY_SOURCE=2)
 else(CMAKE_BUILD_TYPE STREQUAL "release")
     add_definitions(-ggdb -DDEBUG_ENABLED)
 endif(CMAKE_BUILD_TYPE STREQUAL "release")
@@ -17,8 +18,6 @@ endif(CMAKE_BUILD_TYPE STREQUAL "release")
 SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 SET(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/..)
 SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/..)
-
-add_definitions(-D_FORTIFY_SOURCE=2)
 
 ##
 # Set RPATH to find shared library
