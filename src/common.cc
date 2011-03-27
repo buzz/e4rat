@@ -274,7 +274,7 @@ pid_t readPidFile(const char* path)
  */ 
 bool createPidFile(const char* path)
 {
-    int fd = open(path, O_CREAT | O_EXCL | O_WRONLY, 0700);
+    int fd = open(path, O_CREAT | O_EXCL | O_WRONLY, 0600);
     if(-1 == fd)
     {
         if(errno == EEXIST)
