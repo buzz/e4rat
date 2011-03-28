@@ -131,6 +131,8 @@ void Device::parseMtab()
 
     while((mnt = getmntent(fmtab)) != NULL)
     {
+        if(0 == strcmp(mnt->mnt_type, "rootfs"))
+            continue;
         if(stat(mnt->mnt_dir, &st))
             continue;
         if(st.st_dev == get()->devno)
