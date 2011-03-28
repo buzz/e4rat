@@ -118,7 +118,7 @@ class Listener : public AuditListener
     public:
         virtual ~Listener();
         void connect();
-        void start();
+        bool start();
         void stop();
 };
 

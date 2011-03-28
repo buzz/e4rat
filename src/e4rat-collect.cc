@@ -469,9 +469,11 @@ int main(int argc, char* argv[])
     }
     else
         notice("Press 'Ctrl-C' to stop collecting files");
+    
     info("Starting event processing ...");
-    listener.start();
-
+    if(false == listener.start())
+        goto err2;
+    
     filelist = project.getFileList();
     
     notice("\t%d file(s) collected.", filelist.size());

@@ -241,9 +241,7 @@ void AuditListener::removeAuditRules()
 }
 
 void AuditListener::closeAuditSocket()
-{
-    removeAuditRules();
-    
+{   
     if(0 > audit_set_enabled(audit_fd, 0))
         error("Cannot disable audit socket");
 
@@ -619,6 +617,13 @@ void AuditListener::exec()
             // event is syscall event
             case AUDIT_SYSCALL:
                 parseSyscallEvent(au,auditEvent);
+        
+                if(auditEvent->comm == "auditd")
+                {
+                    error("Collecting files conflicts with audit daemon. Quitting ...");
+                    terminate();
+                }
+
                 break;
 
             // change working directory
@@ -696,13 +701,18 @@ void Listener::connect()
     }
 }
 
-void Listener::start()
+bool Listener::start()
 {
     try{
         exec();
     }
     catch(UserInterrupt&)
-    {}
+    {
+        if(error)
+            return false;
+    }
     removeAuditRules();
     closeAuditSocket();
+
+    return true;
 }

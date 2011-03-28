@@ -306,10 +306,16 @@ bool createPidFile(const char* path)
 
 
 bool Interruptible::interrupted = false;
+bool Interruptible::error = false;
 
 void Interruptible::interrupt()
 {
     interrupted = true;
+}
+void Interruptible::terminate()
+{
+    interrupt();
+    error = true;
 }
 
 void Interruptible::interruptionPoint()
