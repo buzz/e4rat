@@ -41,6 +41,9 @@
 #include <boost/foreach.hpp>
 #include <sys/utsname.h>
 
+class DetectAuditDaemon : public std::exception
+{};
+
 AuditEvent::AuditEvent()
 {
     ino = 0;
@@ -481,6 +484,9 @@ void AuditListener::parseSyscallEvent(auparse_state_t* au, boost::shared_ptr<Aud
     auditEvent->pid  = strtoll(parseField(au, "pid" ).c_str(), NULL, 10);
     auditEvent->comm = parsePathField(au, "comm");
     auditEvent->exe  = parsePathField(au, "exe");
+    if(auditEvent->type == Execve)
+        if(auditEvent->comm == "auditd")
+            throw DetectAuditDaemon();
 }
 
 /*
@@ -617,13 +623,6 @@ void AuditListener::exec()
             // event is syscall event
             case AUDIT_SYSCALL:
                 parseSyscallEvent(au,auditEvent);
-        
-                if(auditEvent->comm == "auditd")
-                {
-                    error("Collecting files conflicts with audit daemon. Quitting ...");
-                    terminate();
-                }
-
                 break;
 
             // change working directory
@@ -707,9 +706,11 @@ bool Listener::start()
         exec();
     }
     catch(UserInterrupt&)
+    {}
+    catch(DetectAuditDaemon& e)
     {
-        if(error)
-            return false;
+        error("e4rat-collect conflicts with audit daemon. To use e4rat-collect disable auditd. Quitting ...");       
+        return false;
     }
     removeAuditRules();
     closeAuditSocket();

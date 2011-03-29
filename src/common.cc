@@ -252,16 +252,11 @@ pid_t readPidFile(const char* path)
 
     FILE* file = fopen(path, "r");
     if(NULL == file)
-    {
-        error("Cannot open pid file %s: %s", path, strerror(errno));
         return 0;
-    }
 
     if(EOF == fscanf(file, "%d", &tmp))
-    {
-        error("Cannot read pid from file %s: %s", path, strerror(errno));
         return 0;
-    }
+
     fclose(file);
 
     return tmp;
@@ -306,16 +301,10 @@ bool createPidFile(const char* path)
 
 
 bool Interruptible::interrupted = false;
-bool Interruptible::error = false;
 
 void Interruptible::interrupt()
 {
     interrupted = true;
-}
-void Interruptible::terminate()
-{
-    interrupt();
-    error = true;
 }
 
 void Interruptible::interruptionPoint()

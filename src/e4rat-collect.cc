@@ -47,6 +47,15 @@
 
 #define PID_FILE "/dev/.e4rat-collect.pid"
 
+bool isAuditDaemonRunning()
+{
+    pid_t pid = readPidFile("/var/run/auditd.pid");
+    if(pid)
+        if(0 == kill(pid, 0))
+            return true;
+    return false;
+}
+
 /*
  * Execute a command as user
  */
@@ -291,8 +300,12 @@ int main(int argc, char* argv[])
             case 'k':
             {
                 pid_t pid = readPidFile(PID_FILE);
-                if(pid)
-                    kill(pid, SIGINT);
+                if(0 == pid)
+                {
+                    error("Cannot read pid from file %s: %s", PID_FILE, strerror(errno));
+                    return 1;
+                }
+                kill(pid, SIGINT);
                 return 0;
             }
             case '?':
@@ -328,7 +341,11 @@ int main(int argc, char* argv[])
         std::cerr << "You need root privileges to run this program.\n";
         return 1;
     }
-
+    if(isAuditDaemonRunning())
+    {
+        std::cerr << "To use e4rat-collect disable audit daemon (auditd) first.\n";
+        return 1;
+    }
     /*
      * Register Signalhandler
      */

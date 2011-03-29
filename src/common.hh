@@ -70,10 +70,8 @@ class Interruptible
 {
     public:
         static void interrupt();
-        static void terminate();
     protected:
         void interruptionPoint();
-        static bool error;
     private:
         static bool interrupted;
 };
