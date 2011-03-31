@@ -709,17 +709,7 @@ void AuditListener::exec()
                 auparse_first_field(au);
                 if(0 == auparse_next_field(au))
                     break;
-                else if(0 == strcmp("op", auparse_get_field_name(au)))
-                {
-                    // The message does not contain what rules has been changed
-                    // Test weather op field is equal to "remove rule"
-                    // auparse cannot parse fields containing spaces
-                    if(0 == strcmp("\"remove", auparse_get_field_str(au)))
-                    {
-                        warn("Audit configuration has changed. Reinserting audit rules.");
-                        insertAuditRules();
-                    }
-                }
+                
                 if(0 == strcmp("audit_pid", auparse_get_field_name(au)))
                 {
                     /*
@@ -729,6 +719,24 @@ void AuditListener::exec()
                      */
                     pid_t audit_pid = strtol(auparse_get_field_str(au), NULL, 10);
                     checkSocketCaptured(audit_pid);
+                }
+                else 
+                {
+                    while(auparse_next_field(au))
+                    {
+                        if(0 == strcmp("op", auparse_get_field_name(au)))
+                        {
+                            // The message does not contain what rules has been changed
+                            // Test weather op field is equal to "remove rule"
+                            // auparse cannot parse fields containing spaces
+                            if(parseField(au, "op") == "\"remove")
+                            {
+                                warn("Audit configuration has changed. Reinserting audit rules.");
+                                insertAuditRules();
+                            }
+                            break;
+                        }
+                    }
                 }
                 break;
             case AUDIT_GET: // get status
