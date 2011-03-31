@@ -493,7 +493,7 @@ int main(int argc, char* argv[])
     
     filelist = project.getFileList();
     
-    notice("\t%d file(s) collected.", filelist.size());
+    notice("\t%d file(s) collected", filelist.size());
 
     if(filelist.empty())
         goto out;

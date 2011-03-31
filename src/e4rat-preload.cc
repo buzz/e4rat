@@ -251,7 +251,7 @@ int main(int argc, char* argv[])
                 notice("Parsing file %s ...", argv[i]);
                 FILE* file = fopen(argv[i], "r");
                 if(NULL == file)
-                    warn("File %s does not exist.", argv[i]);
+                    warn("File %s does not exist", argv[i]);
                 else
                 {
                     parseInputStream(file, filelist);
@@ -279,7 +279,7 @@ int main(int argc, char* argv[])
                 notice("Parsing file %s ...", argv[i]);
                 FILE* file = fopen(argv[i], "r");
                 if(NULL == file)
-                    warn("File %s does not exist.", argv[i]);
+                    warn("File %s does not exist", argv[i]);
                 else
                 {
                     parseInputStream(file, filelist);
@@ -302,7 +302,7 @@ int main(int argc, char* argv[])
         error(e.what());
         return 1;
     }
-    notice("%d files scanned.", filelist.size());
+    notice("%d files scanned", filelist.size());
 
     if(flags & SORT)
     {
@@ -368,7 +368,7 @@ int main(int argc, char* argv[])
     notice("Pre-loading file content ...");
     preloadFiles();
 
-    notice("Successfully transferred files into page cache.");
+    notice("Successfully transferred files into page cache");
     exit(0);
 out:
     printUsage();
