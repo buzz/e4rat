@@ -343,7 +343,7 @@ int main(int argc, char* argv[])
     }
     if(isAuditDaemonRunning())
     {
-        std::cerr << "To use e4rat-collect disable audit daemon (auditd) first.\n";
+        std::cerr << "In order to use this program you first have to stop the audit daemon auditd.\n";
         return 1;
     }
     /*

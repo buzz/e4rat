@@ -42,6 +42,7 @@
 #include <sys/utsname.h>
 
 #include <fstream>
+
 std::string getProcessName(pid_t pid)
 {
     std::string comm;
@@ -98,8 +99,7 @@ void AuditListener::excludePath(std::string path)
 void AuditListener::watchPath(std::string path)
 {
     if(path == "/")
-        // does not make sense
-        // and leads to unwanted behaviour
+        // does not make sense and can leads to unwanted behaviour
         return;
     
     watch_paths.push_back(
@@ -178,8 +178,9 @@ void AuditListener::activateRules(int machine)
 
 #if 0
     /*
-     * TODO: filetype=file works in most cases but there is a stupid pid file
-     *       that's creation does not get logged. Don't know why.
+     * TODO: filetype=file works in most cases except for a stupid pid file.
+     *       Its creation does not get logged when filetype=file is enabled.
+     *       Don't know why.
      */ 
     strcpy(field, "filetype=file");
     audit_rule_fieldpair_data(&rule, field, AUDIT_FILTER_EXIT);
@@ -334,21 +335,30 @@ void AuditListener::waitForEvent(struct audit_reply* reply)
     
 repeat:
     do {
-        // TODO: very slow due quitting. 
-        // need opportunity to awake while sleeping
+        // TODO: very slow due quitting. Need another
+        //       opportunity to awake while sleeping
+
         interruptionPoint();
+
         tv.tv_sec = 2;
         tv.tv_usec = 0;
         FD_ZERO(&read_mask);
         FD_SET(audit_fd, &read_mask);
+
         retval = select(audit_fd+1, &read_mask, NULL, NULL, &tv);
 
+        /*
+         * Check occasionally the state of the netlink socket.
+         * If no valid date is received over a long time, some
+         * other process may have captured the session.
+         */
         if(retval == 0)
             if(++err_counter > 5)
             {
                 audit_request_status(audit_fd);
                 err_counter = 0;
             }
+        
     } while (retval == -1 && errno == EINTR);
 
     retval = audit_get_reply(audit_fd, reply,
@@ -702,8 +712,8 @@ void AuditListener::exec()
                 else if(0 == strcmp("op", auparse_get_field_name(au)))
                 {
                     // The message does not contain what rules has been changed
-                    // So test weather op field is "remove rule"
-                    // auparse cannot parse field containing spaces
+                    // Test weather op field is equal to "remove rule"
+                    // auparse cannot parse fields containing spaces
                     if(0 == strcmp("\"remove", auparse_get_field_str(au)))
                     {
                         warn("Audit configuration has changed. Reinserting audit rules.");
@@ -714,7 +724,8 @@ void AuditListener::exec()
                 {
                     /*
                      * There is no guarantee that we get the message that someone else has
-                     * captured the audit socket session. This could happen under heavy load.
+                     * captured the audit socket session. Therefore periodically the status
+                     * of the netlink socket is checked as well.
                      */
                     pid_t audit_pid = strtol(auparse_get_field_str(au), NULL, 10);
                     checkSocketCaptured(audit_pid);
