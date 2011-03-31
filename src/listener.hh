@@ -84,6 +84,7 @@ class AuditListener : public Interruptible
         virtual void exec();
         void insertAuditRules();
         void removeAuditRules();
+        void activateAuditSocket();
         void closeAuditSocket();        
         std::string parseField(auparse_state_t*, const char*);
         std::string parsePathField(auparse_state_t*, const char*);

@@ -211,17 +211,6 @@ void AuditListener::insertAuditRules()
             throw std::logic_error(std::string("Unknown machine hardware name ")+ uts.machine);
         activateRules(machine);
     }
-
-    if(0 > audit_set_pid(audit_fd, getpid(), WAIT_YES))
-        error("Cannot set pid to audit");
-
-    //set 1 to enable auditing
-    //set 2 to enable auditing and lock the configuration
-    if(0 > audit_set_enabled(audit_fd, 1))
-        error("Cannot enable audit");
-
-    if(0 > audit_set_backlog_limit(audit_fd, 256))
-        audit_request_status(audit_fd);
 }
 
 void AuditListener::removeAuditRules()
@@ -241,6 +230,20 @@ void AuditListener::removeAuditRules()
         free(rule);
     }
     rule_vec.clear();
+}
+
+void AuditListener::activateAuditSocket()
+{
+    if(0 > audit_set_pid(audit_fd, getpid(), WAIT_YES))
+        error("Cannot set pid to audit");
+
+    //set 1 to enable auditing
+    //set 2 to enable auditing and lock the configuration
+    if(0 > audit_set_enabled(audit_fd, 1))
+        error("Cannot enable audit");
+
+    if(0 > audit_set_backlog_limit(audit_fd, 256))
+        audit_request_status(audit_fd);
 }
 
 void AuditListener::closeAuditSocket()
@@ -311,7 +314,7 @@ repeat:
         FD_SET(audit_fd, &read_mask);
         
         retval = select(audit_fd+1, &read_mask, NULL, NULL, &tv);
-        
+
     } while (retval == -1 && errno == EINTR);
 
     retval = audit_get_reply(audit_fd, reply,
@@ -484,9 +487,6 @@ void AuditListener::parseSyscallEvent(auparse_state_t* au, boost::shared_ptr<Aud
     auditEvent->pid  = strtoll(parseField(au, "pid" ).c_str(), NULL, 10);
     auditEvent->comm = parsePathField(au, "comm");
     auditEvent->exe  = parsePathField(au, "exe");
-    if(auditEvent->type == Execve)
-        if(auditEvent->comm == "auditd")
-            throw DetectAuditDaemon();
 }
 
 /*
@@ -665,12 +665,41 @@ void AuditListener::exec()
                 // The message does not contain what rules has been changed
                 // So test weather op field is "remove rule"
                 // auparse cannot parse field containing spaces
-                if("\"remove" == parseField(au, "op"))
-                {
-                    warn("Audit configuration has changed. Reinserting audit rules.");
-                    insertAuditRules();
-                }
-                break;
+	      notice("%d: %*s", reply.type, reply.len, reply.msg.data);
+	      auparse_first_field(au);
+		//if(auparse_get_num_fields(au) < 3)
+		//break;
+		//auparse_goto_record_num(au, 3);
+	      while(auparse_next_field(au) > 0)
+		{
+	      if(0 == strcmp("audit_pid", auparse_get_field_name(au)))
+		{
+		  notice("pid found = %s", auparse_get_field_str(au));
+		  if(getpid() != strtol(auparse_get_field_str(au), NULL, 10))
+		    {
+		    notice("Process %s (pid) has captured the audit socket.");
+		    if(Config::get<bool>("force"))
+		        activateAuditSocket();
+		    else
+		    {
+		        notice("e4rat-collect conflicts with %s. Quitting ...");
+		        throw DetectAuditDaemon();
+		    }
+		  break;
+		}
+	      else if(0 == strcmp("op", auparse_get_field_name(au)))
+		{
+		  if(0 == strcmp("\"remove", auparse_get_field_str(au)))
+		    {   warn("Audit configuration has changed. Reinserting audit rules.");
+		      insertAuditRules();
+		    }
+		  break;
+		}
+	      else
+		notice("unknown field: %s = %s", auparse_get_field_name(au), auparse_get_field_str(au));
+		}
+		break;
+		
             default:
                 break;
         }
@@ -692,6 +721,7 @@ void Listener::connect()
 {
     try {
         insertAuditRules();
+	activateAuditSocket();
     }
     catch(std::exception&e)
     {
@@ -709,6 +739,7 @@ bool Listener::start()
     {}
     catch(DetectAuditDaemon& e)
     {
+      //removeAuditRules();
         error("e4rat-collect conflicts with audit daemon. To use e4rat-collect disable auditd. Quitting ...");       
         return false;
     }
