@@ -180,7 +180,8 @@ std::vector<std::string> matchPath( const std::string & filesearch )
 fs::path realpath(fs::path ph, fs::path base)
 {
     fs::path mypath;
-
+    if(!base.has_root_directory())
+        base.clear();
     /*
      * boost::filesystem2::compare() throw an assert on path names like: "//.esd.conf"
      * I don't know why but path::is_complete() returns false while path::has_root_name()

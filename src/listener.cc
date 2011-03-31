@@ -41,8 +41,35 @@
 #include <boost/foreach.hpp>
 #include <sys/utsname.h>
 
+#include <fstream>
+std::string getProcessName(pid_t pid)
+{
+    std::string comm;
+    char filename[PATH_MAX];
+    sprintf(filename, "/proc/%d/comm", pid);
+
+    std::fstream filestr (filename, std::fstream::in);
+    if(filestr.good())
+        filestr >> comm;
+    else
+        comm = "unknown";
+    
+    return comm;
+}
+
 class DetectAuditDaemon : public std::exception
 {};
+
+void checkSocketCaptured(pid_t audit_pid)
+{
+    if(getpid() != audit_pid)
+    {
+        std::string comm = getProcessName(audit_pid);
+        error("Process %s [%d] has captured the audit socket.", comm.c_str(), audit_pid);
+        error("e4rat-collect conflicts with %s. Quitting ...", comm.c_str());
+        throw DetectAuditDaemon();
+    }
+}
 
 AuditEvent::AuditEvent()
 {
@@ -177,7 +204,8 @@ void AuditListener::activateRules(int machine)
      * Insert rule
      */
     if ( 0 >= audit_add_rule_data(audit_fd, rule, AUDIT_FILTER_EXIT, AUDIT_ALWAYS))
-        error("Cannot insert rules: %s", strerror(errno));
+        if(errno != EEXIST)
+            error("Cannot insert rules: %s", strerror(errno));
     
     rule_vec.push_back(rule);
 }
@@ -301,27 +329,32 @@ void AuditListener::waitForEvent(struct audit_reply* reply)
     fd_set read_mask;
     struct timeval tv;
     int    retval;
+    int err_counter = 0;
+
     
 repeat:
     do {
         // TODO: very slow due quitting. 
         // need opportunity to awake while sleeping
         interruptionPoint();
-        
         tv.tv_sec = 2;
         tv.tv_usec = 0;
         FD_ZERO(&read_mask);
         FD_SET(audit_fd, &read_mask);
-        
         retval = select(audit_fd+1, &read_mask, NULL, NULL, &tv);
 
+        if(retval == 0)
+            if(++err_counter > 5)
+            {
+                audit_request_status(audit_fd);
+                err_counter = 0;
+            }
     } while (retval == -1 && errno == EINTR);
 
     retval = audit_get_reply(audit_fd, reply,
                              GET_REPLY_NONBLOCKING, 0);
-    if(0 > retval){
+    if(0 > retval)
         goto repeat;
-    }
 }
 
 /*
@@ -462,7 +495,7 @@ void AuditListener::parseSyscallEvent(auparse_state_t* au, boost::shared_ptr<Aud
         auditEvent->type = Truncate;
     else
     {
-        notice("Unknown syscall: %s = %d", sc_name, syscall);
+        debug("Unknown syscall: %s = %d", sc_name, syscall);
         auditEvent->type = Unknown;
         return;
     }
@@ -599,6 +632,7 @@ void AuditListener::exec()
     msgdb_t::iterator msgdb_it;
     boost::shared_ptr<AuditEvent> auditEvent;
     __u32 msgid;
+
     while(1)
     {
         waitForEvent(&reply);
@@ -662,44 +696,33 @@ void AuditListener::exec()
                 msgdb.erase(msgdb_it);
                 break;
             case AUDIT_CONFIG_CHANGE:
-                // The message does not contain what rules has been changed
-                // So test weather op field is "remove rule"
-                // auparse cannot parse field containing spaces
-	      notice("%d: %*s", reply.type, reply.len, reply.msg.data);
-	      auparse_first_field(au);
-		//if(auparse_get_num_fields(au) < 3)
-		//break;
-		//auparse_goto_record_num(au, 3);
-	      while(auparse_next_field(au) > 0)
-		{
-	      if(0 == strcmp("audit_pid", auparse_get_field_name(au)))
-		{
-		  notice("pid found = %s", auparse_get_field_str(au));
-		  if(getpid() != strtol(auparse_get_field_str(au), NULL, 10))
-		    {
-		    notice("Process %s (pid) has captured the audit socket.");
-		    if(Config::get<bool>("force"))
-		        activateAuditSocket();
-		    else
-		    {
-		        notice("e4rat-collect conflicts with %s. Quitting ...");
-		        throw DetectAuditDaemon();
-		    }
-		  break;
-		}
-	      else if(0 == strcmp("op", auparse_get_field_name(au)))
-		{
-		  if(0 == strcmp("\"remove", auparse_get_field_str(au)))
-		    {   warn("Audit configuration has changed. Reinserting audit rules.");
-		      insertAuditRules();
-		    }
-		  break;
-		}
-	      else
-		notice("unknown field: %s = %s", auparse_get_field_name(au), auparse_get_field_str(au));
-		}
-		break;
-		
+                auparse_first_field(au);
+                if(0 == auparse_next_field(au))
+                    break;
+                else if(0 == strcmp("op", auparse_get_field_name(au)))
+                {
+                    // The message does not contain what rules has been changed
+                    // So test weather op field is "remove rule"
+                    // auparse cannot parse field containing spaces
+                    if(0 == strcmp("\"remove", auparse_get_field_str(au)))
+                    {
+                        warn("Audit configuration has changed. Reinserting audit rules.");
+                        insertAuditRules();
+                    }
+                }
+                if(0 == strcmp("audit_pid", auparse_get_field_name(au)))
+                {
+                    /*
+                     * There is no guarantee that we get the message that someone else has
+                     * captured the audit socket session. This could happen under heavy load.
+                     */
+                    pid_t audit_pid = strtol(auparse_get_field_str(au), NULL, 10);
+                    checkSocketCaptured(audit_pid);
+                }
+                break;
+            case AUDIT_GET: // get status
+                checkSocketCaptured(reply.status->pid);
+                break;
             default:
                 break;
         }
@@ -739,8 +762,6 @@ bool Listener::start()
     {}
     catch(DetectAuditDaemon& e)
     {
-      //removeAuditRules();
-        error("e4rat-collect conflicts with audit daemon. To use e4rat-collect disable auditd. Quitting ...");       
         return false;
     }
     removeAuditRules();
