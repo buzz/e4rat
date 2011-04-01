@@ -67,7 +67,7 @@ void checkSocketCaptured(pid_t audit_pid)
     {
         std::string comm = getProcessName(audit_pid);
         error("Process %s [%d] has captured the audit socket.", comm.c_str(), audit_pid);
-        error("e4rat-collect conflicts with %s. Quitting ...", comm.c_str());
+        error("e4rat-collect is in conflict with %s. Abort", comm.c_str());
         throw DetectAuditDaemon();
     }
 }
