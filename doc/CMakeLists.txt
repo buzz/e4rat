@@ -61,13 +61,19 @@ ADD_CUSTOM_COMMAND(
 	  e4rat.conf.5
 )
 
+if(CMAKE_INSTALL_PREFIX STREQUAL "/")
+    SET(MAN_INSTALL_PREFIX "/usr")
+elseif(CMAKE_INSTALL_PREFIX STREQUAL "/")
+    SET(MAN_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+endif(CMAKE_INSTALL_PREFIX STREQUAL "/")
+
 INSTALL(FILES
 		    e4rat-collect.8 
 		    e4rat-realloc.8
 		    e4rat-preload.8
-	DESTINATION share/man/man8)
+	DESTINATION ${MAN_INSTALL_PREFIX}/share/man/man8)
 
 INSTALL(FILES
             e4rat.conf.5
-    DESTINATION share/man/man5)
+    DESTINATION ${MAN_INSTALL_PREFIX}/share/man/man5)
 
