@@ -65,7 +65,7 @@ e4rat-preload /var/lib/e4rat/firefox -x firefox
 
 Run e4rat-preload as early as possible. It is recommended to run it as the init process.
 To do so, append the following line to the Kernel parameters in grub(8) or lilo(8):
-   init=/usr/sbin/e4rat-preload
+   init=/sbin/e4rat-preload
 
 =head1 FILES
 

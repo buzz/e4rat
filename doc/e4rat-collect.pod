@@ -110,7 +110,7 @@ select true or false whether e4rat-collect should ignore already opened files be
 =head2 Scan boot process:
 
 Run e4rat-collect as early as possible to scan the whole startup process. It is recommended to run e4rat-collect as init process. To do so, add the following lines to the Kernel parameters in grub(8) or lilo(8).
-  init=/usr/sbin/e4rat-collect
+  init=/sbin/e4rat-collect
 
 =head1 FILES
 

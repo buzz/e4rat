@@ -30,7 +30,7 @@ SAMPLE USAGE: Accelerate the boot process
 
 Run e4rat-collect as init process through adding following line to Kernel
 parameters:
-    init=/usr/sbin/e4rat-collect
+    init=/sbin/e4rat-collect
 
 After e4rat-collect has terminated the generated file list is stored at:
     /var/lib/e4rat/startup.log
@@ -45,7 +45,7 @@ Reallocating boot files:
 
 To start e4rat-preload as initial process append following to kernel your
 parameters:
-    init=/usr/sbin/e4rat-preload
+    init=/sbin/e4rat-preload
 
 DEPENDENIES
 -----------
@@ -67,10 +67,10 @@ To build the release version of e4rat run the following command:
     cmake . -DCMAKE_BUILD_TYPE=release
     make
 
-The default behaviour of cmake is to install binaries and libraries to
-/usr/local. To use a different install prefix add the command line parameter to
+The default install prefix of e4rat is '/'. To use a different one 
+add the command line parameter to
 cmake as follow:
-    cmake . -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=release
+    cmake . -DCMAKE_INSTALL_PREFIX=/opt -DCMAKE_BUILD_TYPE=release
 
 Once you have successfully built the source code install e4rat as root:
     make install
@@ -78,7 +78,7 @@ Once you have successfully built the source code install e4rat as root:
 If you are running a Debian based Linux you can also install e4rat by
 generating a Debian package:
     make package
-    dpkg -i e4rat-<version>-<arch>-release.deb
+    dpkg -i e4rat_<version>_<arch>.deb
 
 
 AUTHORS
