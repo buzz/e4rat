@@ -47,6 +47,13 @@ IF(NOT CMAKE_BUILD_TYPE STREQUAL "release")
     	${CPACK_PACKAGE_FILE_NAME}_debug)
 endif(NOT CMAKE_BUILD_TYPE STREQUAL "release")
 
+SET (CPACK_INSTALL_PREFIX "/")
+
+if(NOT CPACK_INSTALL_PREFIX STREQUAL CMAKE_INSTALL_PREFIX)
+SET(CPACK_PACKAGE_FILE_NAME 
+    	${CPACK_PACKAGE_FILE_NAME}_invalid-prefix)
+endif(NOT CPACK_INSTALL_PREFIX STREQUAL CMAKE_INSTALL_PREFIX)
+
 SET (CPACK_PACKAGE_CONTACT "Andreas Rid <conso@rz.fh-augsburg.de>")
 SET (CPACK_PACKAGE_DESCRIPTION_SUMMARY
         "Reduce disk access time on ext4 filesystems through relevant file defragmentation.")
@@ -61,8 +68,6 @@ set (CPACK_SET_DESTDIR                  "ON") # Necessary because of the absolut
 set( CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
         "${CMAKE_CURRENT_SOURCE_DIR}/debian/preinst"
         "${CMAKE_CURRENT_SOURCE_DIR}/debian/postrm")
-
-SET (CPACK_INSTALL_PREFIX "/")
 
 SET (CPACK_DEBIAN_PACKAGE_DEPENDS
         "libboost-filesystem${Boost_VERSION_STR} (>=1.41)")
