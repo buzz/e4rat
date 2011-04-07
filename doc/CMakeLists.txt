@@ -25,8 +25,8 @@ ADD_CUSTOM_COMMAND(
     TARGET ManPages 
     SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/e4rat.conf.pod 
     COMMAND pod2man ARGS ${CMAKE_CURRENT_SOURCE_DIR}/e4rat.conf.pod
-                         ${CMAKE_CURRENT_SOURCE_DIR}/e4rat.conf.5
-  	  	         --section 5
+                         ${CMAKE_CURRENT_BINARY_DIR}/e4rat.conf.5
+                         --section 5
                          --center "User Manuals"
                          --release "e4rat ${E4RAT_VERSION}"
     OUTPUTS e4rat.conf.5
@@ -36,10 +36,10 @@ ADD_CUSTOM_COMMAND(
     TARGET ManPages
     SOURCE ManPages
     DEPENDS
-        e4rat-collect.8
-	e4rat-realloc.8
-	e4rat-preload.8
-	e4rat.conf.5
+                e4rat-collect.8
+                e4rat-realloc.8
+                e4rat-preload.8
+                e4rat.conf.5
 )
 
 if(CMAKE_INSTALL_PREFIX STREQUAL "/")
