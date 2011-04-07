@@ -62,7 +62,7 @@ set( CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
         "${CMAKE_CURRENT_SOURCE_DIR}/debian/preinst"
         "${CMAKE_CURRENT_SOURCE_DIR}/debian/postrm")
 
-SET (CPACK_INSTALL_PREFIX "/usr")
+SET (CPACK_INSTALL_PREFIX "/")
 
 SET (CPACK_DEBIAN_PACKAGE_DEPENDS
         "libboost-filesystem${Boost_VERSION_STR} (>=1.41)")
