@@ -35,3 +35,6 @@
 
 ; default rearrangement mode for e4rat-realloc (DEFAULT: auto)
 ; defrag_mode auto
+
+; default path to startup log file (DEFAULT: /var/lib/e4rat/startup.log)
+; startup_log_file /var/lib/e4rat/startup.log

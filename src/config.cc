@@ -55,6 +55,7 @@ Config::Config()
     defaultProperty.put("log_target", "/dev/kmsg");
     defaultProperty.put("init", "/sbin/init");
     defaultProperty.put("force", false);
+    defaultProperty.put("startup_log_file", "/var/lib/e4rat/startup.log");
 
     /*
      * Set tool name by searching for argv[0]

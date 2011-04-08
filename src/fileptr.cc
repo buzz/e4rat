@@ -51,8 +51,9 @@ bool FileDepot::key_t::operator<(const FileDepot::key_t& other) const
 {
     if(this->dev < other.dev)
         return true;
-    if(this->ino < other.ino)
-        return true;
+    else if(this->dev == other.dev)
+        if(this->ino < other.ino)
+            return true;
 
     return false;
 }

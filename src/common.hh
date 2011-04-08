@@ -24,8 +24,6 @@
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
 
-#define STARTUP_LOG_FILE "/var/lib/"PROGRAM_NAME"/startup.log"
-
 namespace fs = boost::filesystem;
 
 void setStdIn2NonBlocking();

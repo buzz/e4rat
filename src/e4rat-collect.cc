@@ -202,8 +202,8 @@ int main(int argc, char* argv[])
     Listener listener;
 
     // excluding file list only affect only if process id is not 1
-    if(0 == access(STARTUP_LOG_FILE, F_OK))
-        exclude_filenames.push_back(STARTUP_LOG_FILE);
+    if(0 == access(Config::get<std::string>("startup_log_file").c_str(), F_OK))
+        exclude_filenames.push_back(Config::get<std::string>("startup_log_file").c_str());
     
     static struct option long_options[] =
         {
@@ -359,7 +359,7 @@ int main(int argc, char* argv[])
     {
         create_pid_late = true;
 
-        outPath = STARTUP_LOG_FILE;
+        outPath = Config::get<std::string>("startup_log_file").c_str();
         verbose = 0;
     }
     else

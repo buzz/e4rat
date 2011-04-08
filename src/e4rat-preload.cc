@@ -52,13 +52,14 @@ class FileInfo
             dev = ino = 0;
         }
         FileInfo(dev_t d, ino_t i, fs::path p): dev(d), ino(i), path(p) {}
-        
+
         bool operator<(const FileInfo& other) const
         {
             if(this->dev < other.dev)
                 return true;
-            if(this->ino < other.ino)
-                return true;
+            else if(this->dev == other.dev)
+                if(this->ino < other.ino)
+                    return true;
             
             return false;
         }
@@ -101,6 +102,7 @@ void preloadInodes()
     struct stat st;
     std::vector<FileInfo> filelist_sorted = filelist;
     std::sort(filelist_sorted.begin(), filelist_sorted.end());
+
     BOOST_FOREACH(FileInfo& file, filelist_sorted)
     {
         lstat(file.path.string().c_str(), &st);
@@ -231,11 +233,12 @@ int main(int argc, char* argv[])
     try {
     if(getpid() == 1)
     {
-        notice("Open %s ... ", STARTUP_LOG_FILE);
-        FILE* infile = fopen(STARTUP_LOG_FILE, "r");
+        const char* logfile = Config::get<std::string>("startup_log_file").c_str();
+        notice("Open %s ... ", logfile);
+        FILE* infile = fopen(logfile, "r");
         if(!infile)
         {
-            error("%s is not accessible", STARTUP_LOG_FILE);
+            error("%s is not accessible", logfile);
             execv(Config::get<std::string>("init").c_str(), argv);
         }
         
