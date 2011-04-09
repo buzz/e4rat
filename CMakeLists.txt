@@ -85,7 +85,7 @@ SET (CPACK_DEBIAN_PACKAGE_DEPENDS
         "${CPACK_DEBIAN_PACKAGE_DEPENDS}, e2fslibs (>=1.41)")
 
 SET (CPACK_DEBIAN_PACKAGE_CONFLICTS
-        auditd, ureadahead)
+        "auditd, ureadahead")
 
 INCLUDE(CPack)
 
