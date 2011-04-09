@@ -73,6 +73,10 @@ add_library(${PROJECT_NAME}-core SHARED
         device.cc
     )
 
+target_link_libraries(${PROJECT_NAME}-core
+        ${${PROJECT_NAME}_LIBRARIES}
+    )
+
 set_target_properties(${PROJECT_NAME}-core  PROPERTIES
         SOVERSION 0
     )
@@ -106,20 +110,14 @@ TARGET_LINK_LIBRARIES(${PROJECT_NAME}-offsets
     )
 ENDIF(CMAKE_BUILD_TYPE STREQUAL "debug")
 
-TARGET_LINK_LIBRARIES(${PROJECT_NAME}-collect
-    ${${PROJECT_NAME}_LIBRARIES}
-    ${PROJECT_NAME}-core
+foreach( EXE     ${PROJECT_NAME}-collect
+                 ${PROJECT_NAME}-realloc 
+                 ${PROJECT_NAME}-preload)
+    TARGET_LINK_LIBRARIES(${EXE}
+        ${${PROJECT_NAME}_LIBRARIES}
+        ${PROJECT_NAME}-core
     )
-
-TARGET_LINK_LIBRARIES(${PROJECT_NAME}-preload
-    ${${PROJECT_NAME}_LIBRARIES}
-    ${PROJECT_NAME}-core
-    )
-
-TARGET_LINK_LIBRARIES(${PROJECT_NAME}-realloc
-    ${${PROJECT_NAME}_LIBRARIES}
-    ${PROJECT_NAME}-core
-    )
+endforeach( EXE )
 
 INSTALL(TARGETS ${PROJECT_NAME}-collect
                 ${PROJECT_NAME}-preload
