@@ -4,7 +4,7 @@ set(CMAKE_VERBOSE_MAKEFILE              off)
 
 PROJECT(e4rat)
 
-set(E4RAT_VERSION   "0.1.5")
+set(E4RAT_VERSION   "0.2")
 
 IF( NOT CMAKE_BUILD_TYPE )
     SET( CMAKE_BUILD_TYPE "debug" )
