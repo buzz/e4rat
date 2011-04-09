@@ -53,6 +53,10 @@ Set <log_target> to 'syslog' to send the message to the syslog daemon.
 
 Set an alternative init process instead of /sbin/init
 
+=item B<startup_log_file>
+
+set path to startup log file. [Default: /var/lib/e4rat/startup.log]
+
 =back
 
 =head2 Specific for I<e4rat-collect>
