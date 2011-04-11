@@ -779,7 +779,7 @@ void Defrag::createDonorFiles_LocalityGroup(Device& device,
         if(-1 != old_mb_group_prealloc)
             device.setTuningParameter("mb_group_prealloc",
                                       old_mb_group_prealloc);
-        throw e;
+        throw;
     }
     catch(...)
     {
@@ -866,7 +866,7 @@ void Defrag::createDonorFiles_TLD(Device& device,
         if(old_mb_stream_req != -1)
             device.setTuningParameter("mb_stream_req", old_mb_stream_req);
 
-        throw e;
+        throw;
     }
     catch(...)
     {

@@ -268,7 +268,7 @@ void Device::openSysFsExt4File(std::filebuf* fb, std::string filename, std::ios_
                            + "/" + filename;
     
     if(NULL == fb->open(fullPath.c_str(), mode))
-        throw std::runtime_error(std::string("cannot open file: ") + fullPath);
+        throw std::runtime_error(std::string("Cannot open file: ") + fullPath);
 }
 
 /*
