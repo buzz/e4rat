@@ -58,12 +58,14 @@ fs::path ScanFsAccess::readLink(fs::path& path)
 fs::path ScanFsAccess::getPath2RegularFile(fs::path& path)
 {
     fs::path linkTo = path;
+
     try {
         while(1)
             linkTo = readLink(linkTo);
     }
     catch(...)
     {}
+
     return linkTo;
 }
     

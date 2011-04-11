@@ -123,6 +123,7 @@ FilePtr::FilePtr(dev_t dev, ino_t ino, fs::path path, bool valid)
     get()->dev = dev;
     get()->ino = ino;
     FileDepot::instance()->insert(dev, ino, *this);
+
     if(false == valid)
         get()->valid = false;
 }

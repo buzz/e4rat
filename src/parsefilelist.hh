@@ -53,9 +53,9 @@ void parseInputStream(FILE* in, std::vector<T>& filelist)
         lineno++;
 
         if(detailed)
-            ret = fscanf(in, "%d %llu %s", &dev, &ino, path);
+            ret = fscanf(in, "%d %llu %[^\n]s", &dev, &ino, path);
         else
-            ret = fscanf(in, "%s", path);
+            ret = fscanf(in, "%[^\n]s", path);
 
         if(ret == EOF)
             break;

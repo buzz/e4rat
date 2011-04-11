@@ -106,19 +106,19 @@ void scanOpenFiles(std::vector<FilePtr>& list)
     size_t size_early = list.size();
     debug("Scan open files by calling lsof");
     
-    FILE* pFile = popen("lsof -w / | awk '{print $6,$8,$9 }'", "r");
+    FILE* pFile = popen("lsof -w /", "r");
     if(NULL == pFile)
         return;
-    int lin = 0;
+    //skip first line
+    if(NULL == fgets (buffer , PATH_MAX+64, pFile))
+        return; 
+
     while(NULL != fgets (buffer , PATH_MAX+64, pFile))
     {
-        lin++;
-        if(EOF == sscanf(buffer, "%x%*c%x %llu %s",
-                            &major, &minor, (long long unsigned int*)&ino, path))
-    {
+        if(EOF == sscanf(buffer, "%*s%*s%*s%*s%*s %x%*c%x %*s %llu %[^\n]s", &major, &minor, (long long unsigned int*)&ino, path))
+        {
             error("scan lsof: %s", strerror(errno));
-    }
-
+        }
         FilePtr file = FilePtr(makedev(major, minor), ino, path);
         if(file.unique())
             list.push_back(file);

@@ -298,6 +298,26 @@ inline std::string AuditListener::parseField(auparse_state_t* au, const char* na
     return std::string(auparse_get_field_str(au));
 }
 
+char convertHexToChar(char c)
+{
+    if(c >= '0' && c <= '9')
+        return c - '0';
+    else if(c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+
+    throw std::logic_error(std::string("Unknown hex value: ")+c);
+}
+
+std::string hexString2Ascii(std::string& hex)
+{
+    std::string result;
+
+    for(unsigned int i=0; i < hex.size(); i+=2)
+        result.append(1, (convertHexToChar(hex.at(i))<<4) + convertHexToChar(hex.at(i+1)) );
+
+    return result;
+}
+
 /*
  * parse path value of an audit event name="path"
  */
@@ -307,17 +327,26 @@ inline std::string AuditListener::parsePathField(auparse_state_t* au, const char
     std::string buf(parseField(au, name));
     if(buf.empty())
         return buf;
+
+    if(buf[0] == '\"')
+    {
+        buf = buf.substr(1, buf.size() -2);
+
+        //auparse has a bug that's why it reads sometimes too far
+        size_t found = buf.find_first_of("\"");
+        if(found != buf.npos)
+            buf.resize(found);
     
-    buf = buf.substr(1, buf.size() -2);
-
-    //auparse has a bug that's why it reads sometimes too far
-    size_t found = buf.find_first_of("\"");
-    if(found != buf.npos)
-        buf.resize(found);
-
-    if(buf == "null")
-        buf.clear();
-
+        if(buf == "null")
+            buf.clear();
+    }
+    else
+        // path is a hex string
+    {
+        debug("hex string %s", buf.c_str());
+        buf = hexString2Ascii(buf);
+        debug("hex2string %s", buf.c_str());
+    }
     return buf;
 }
 
@@ -699,7 +728,7 @@ void AuditListener::exec()
                             )
                       ))
                 {
-                    debug("Parsed Event: %d %ds", auditEvent->type, auditEvent->path.string().c_str());
+                    debug("Parsed Event: %d %s", auditEvent->type, auditEvent->path.string().c_str());
                     eventParsed(auditEvent);
                 }
                 
