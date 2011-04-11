@@ -22,8 +22,6 @@
 #include <fstream>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <stropts.h>
-
 
 BuddyCache::BuddyCache(Device _device)
     : device(_device)
