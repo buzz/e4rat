@@ -27,7 +27,7 @@
 
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <stropts.h>
+#include <sys/ioctl.h>
 #include <mntent.h>
 
 #include <boost/lexical_cast.hpp>
@@ -187,6 +187,8 @@ std::string Device::getDeviceName()
               it != end_itr;
               ++it )
         {
+            if(it->filename() == "root")
+                continue;
             if(lstat(it->string().c_str(), &st))
                 continue;
             if(st.st_rdev == get()->devno)
