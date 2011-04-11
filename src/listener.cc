@@ -336,13 +336,13 @@ inline std::string AuditListener::parsePathField(auparse_state_t* au, const char
         size_t found = buf.find_first_of("\"");
         if(found != buf.npos)
             buf.resize(found);
-    
-        if(buf == "null")
-            buf.clear();
     }
     else
         // path is a hex string
     {
+        if(buf == "(null)")
+            buf.clear();
+        
         debug("hex string %s", buf.c_str());
         buf = hexString2Ascii(buf);
         debug("hex2string %s", buf.c_str());
