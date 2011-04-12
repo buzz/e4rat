@@ -304,8 +304,10 @@ char convertHexToChar(char c)
         return c - '0';
     else if(c >= 'A' && c <= 'F')
         return c - 'A' + 10;
-
-    throw std::logic_error(std::string("Unknown hex value: ")+c);
+    else if(c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    
+    throw c;
 }
 
 std::string hexString2Ascii(std::string& hex)
@@ -340,12 +342,18 @@ inline std::string AuditListener::parsePathField(auparse_state_t* au, const char
     else
         // path is a hex string
     {
+
         if(buf == "(null)")
-            buf.clear();
+            return std::string();
         
-        debug("hex string %s", buf.c_str());
-        buf = hexString2Ascii(buf);
-        debug("hex2string %s", buf.c_str());
+        try {
+            buf = hexString2Ascii(buf);
+        }
+        catch(char c)
+        {
+            warn("Cannot convert hex string `%s\' to a valid path. Unrecognised character 0x%x", buf.c_str(), c);
+            buf.clear();
+        }
     }
     return buf;
 }
