@@ -340,7 +340,7 @@ inline std::string AuditListener::parsePathField(auparse_state_t* au, const char
             buf.resize(found);
     }
     else
-        // path is a hex string
+        // path is a hex string cause it may contains spaces
     {
 
         if(buf == "(null)")
