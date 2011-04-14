@@ -20,7 +20,6 @@ foreach( _man  e4rat-collect e4rat-realloc e4rat-preload )
     )
 endforeach( _man )
 
-
 ADD_CUSTOM_COMMAND(
     TARGET ManPages 
     SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/e4rat.conf.pod 
@@ -29,17 +28,17 @@ ADD_CUSTOM_COMMAND(
                          --section 5
                          --center "User Manuals"
                          --release "e4rat ${E4RAT_VERSION}"
-    OUTPUTS e4rat.conf.5
+    OUTPUTS ${CMAKE_CURRENT_BINARY_DIR}/e4rat.conf.5
 )
 
 ADD_CUSTOM_COMMAND(
     TARGET ManPages
     SOURCE ManPages
     DEPENDS
-                e4rat-collect.8
-                e4rat-realloc.8
-                e4rat-preload.8
-                e4rat.conf.5
+                ${CMAKE_CURRENT_BINARY_DIR}/e4rat-collect.8
+                ${CMAKE_CURRENT_BINARY_DIR}/e4rat-realloc.8
+                ${CMAKE_CURRENT_BINARY_DIR}/e4rat-preload.8
+                ${CMAKE_CURRENT_BINARY_DIR}/e4rat.conf.5
 )
 
 if(CMAKE_INSTALL_PREFIX STREQUAL "/")

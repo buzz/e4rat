@@ -5,6 +5,12 @@ IF( NOT CMAKE_BUILD_TYPE )
   MESSAGE(FATAL_ERROR "Do not run cmake on subdirectories")
 ENDIF()
 
+if(CMAKE_SIZEOF_VOID_P MATCHES 4)
+    SET(HAVE_64_BIT 0)
+else(CMAKE_SIZEOF_VOID_P MATCHES 4)
+    SET(HAVE_64_BIT 1)
+endif(CMAKE_SIZEOF_VOID_P MATCHES 4)
+
 add_definitions(-Wall)
 add_definitions(-DPROGRAM_NAME=\"${PROJECT_NAME}\")
 add_definitions(-DVERSION=\"${E4RAT_VERSION}\")
@@ -68,50 +74,65 @@ find_package(Threads REQUIRED)
 set(${PROJECT_NAME}_LIBRARIES   ${${PROJECT_NAME}_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT})
 
-add_library(${PROJECT_NAME}-core SHARED
+
+###
+# Building source code
+###
+set(${PROJECT_NAME}-core_SRC
         config.cc
         logging.cc
         common.cc
         fiemap.cc
         device.cc
-    )
-
-target_link_libraries(${PROJECT_NAME}-core
-        ${${PROJECT_NAME}_LIBRARIES}
-    )
-
-set_target_properties(${PROJECT_NAME}-core  PROPERTIES
-        SOVERSION 0
-        LINK_FLAGS  "-static-libgcc -static-libstdc++"
-    )
+)
 
 ADD_EXECUTABLE(${PROJECT_NAME}-collect
         e4rat-collect.cc
         fileptr.cc
         listener.cc
         eventcatcher.cc
-    )
+)
 
 ADD_EXECUTABLE(${PROJECT_NAME}-preload
         e4rat-preload.cc
-    )
+)
 
 ADD_EXECUTABLE(${PROJECT_NAME}-realloc
         e4rat-realloc.cc
         defrag.cc
         buddycache.cc
-    )
+)
 
 
 IF(CMAKE_BUILD_TYPE STREQUAL "debug")
     ADD_EXECUTABLE(${PROJECT_NAME}-offsets
         e4rat-offsets.cc
     )
-        
-TARGET_LINK_LIBRARIES(${PROJECT_NAME}-offsets
+    TARGET_LINK_LIBRARIES(${PROJECT_NAME}-offsets
         ${PROJECT_NAME}-core
     )
 ENDIF(CMAKE_BUILD_TYPE STREQUAL "debug")
+
+# On 64 bit architecture you cannot link a static to a shared library
+# Therefore -static-libstdc++ will fail.
+if(HAVE_64_BIT)
+    add_library(${PROJECT_NAME}-core STATIC
+        ${${PROJECT_NAME}-core_SRC}
+    )
+else(HAVE_64_BIT)
+    add_library(${PROJECT_NAME}-core SHARED
+        ${${PROJECT_NAME}-core_SRC}
+    )
+    set_target_properties(${PROJECT_NAME}-core  PROPERTIES
+        SOVERSION   0
+        LINK_FLAGS  "-static-libgcc -static-libstdc++"
+    )
+endif(HAVE_64_BIT)
+
+target_link_libraries(${PROJECT_NAME}-core
+        ${${PROJECT_NAME}_LIBRARIES}
+        ${${PROJECT_NAME}_STATIC_LIBRARIES}
+)
 
 foreach( EXE     ${PROJECT_NAME}-collect
                  ${PROJECT_NAME}-realloc 
@@ -124,12 +145,26 @@ foreach( EXE     ${PROJECT_NAME}-collect
     )
 endforeach( EXE )
 
-INSTALL(TARGETS ${PROJECT_NAME}-collect
-                ${PROJECT_NAME}-preload
-                ${PROJECT_NAME}-realloc
-                ${PROJECT_NAME}-core
+###
+# install project targets
+###
+set(${PROJECT_NAME}_TARGETS 
+    ${PROJECT_NAME}-collect
+    ${PROJECT_NAME}-preload
+    ${PROJECT_NAME}-realloc
+)
+
+if(NOT HAVE_64_BIT)
+    set(${PROJECT_NAME}_TARGETS 
+        ${${PROJECT_NAME}_TARGETS}
+        ${PROJECT_NAME}-core
+    )
+endif(NOT HAVE_64_BIT)
+
+INSTALL(TARGETS ${${PROJECT_NAME}_TARGETS}
         RUNTIME DESTINATION "sbin"
         LIBRARY DESTINATION "lib"
-        ARCHIVE DESTINATION "lib")
+        ARCHIVE DESTINATION "lib"
+)
 
 INSTALL(DIRECTORY DESTINATION "/var/lib/${PROJECT_NAME}")
