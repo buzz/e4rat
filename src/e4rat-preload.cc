@@ -91,12 +91,6 @@ void sortFileList()
         filelist.push_back(i.second);
 }
 
-void dumpFileList(std::ostream& out)
-{
-    BOOST_FOREACH(FileInfo& file, filelist)
-        out << file.dev << '\t' << file.ino << '\t' << file.path.string() << std::endl;
-}
-
 void preloadInodes()
 {
     struct stat st;
