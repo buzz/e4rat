@@ -233,6 +233,11 @@ void AuditListener::insertAuditRules()
         activateRules(MACH_86_64);
         activateRules(MACH_X86);
     }
+    else if(0 == strcmp(uts.machine, "ppc64"))
+    {
+        activateRules(MACH_PPC64);
+        activateRules(MACH_PPC);
+    }
     else
     {
         int machine = audit_name_to_machine(uts.machine);
@@ -367,9 +372,8 @@ void AuditListener::waitForEvent(struct audit_reply* reply)
     fd_set read_mask;
     struct timeval tv;
     int    retval;
-    int err_counter = 0;
+    int    err_counter = 0;
 
-    
 repeat:
     do {
         // TODO: very slow due quitting. Need another
@@ -776,7 +780,8 @@ void AuditListener::exec()
                     }
                 }
                 break;
-            case AUDIT_GET: // get status
+            // get netlink status
+            case AUDIT_GET:
                 checkSocketCaptured(reply.status->pid);
                 break;
             default:
