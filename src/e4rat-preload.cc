@@ -33,7 +33,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <linux/limits.h>
-
+#include <sys/resource.h> 
 #include <boost/foreach.hpp>
 
 #define SORT 1
@@ -361,7 +361,8 @@ int main(int argc, char* argv[])
                 exit(0);
          }
     }
-
+    if(-1 == setpriority(PRIO_PROCESS, 0, 10))
+        warn("Cannot decrease priority: %s", strerror(errno));
     notice("Pre-loading file content ...");
     preloadFiles();
 
