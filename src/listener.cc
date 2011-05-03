@@ -637,18 +637,25 @@ bool AuditListener::ignoreDevice(dev_t dev)
 
     if(ext4_only)
     {
-        Device device(dev);
-        if(device.getFileSystem() == "ext4")
-            watch_devices.insert(dev);
-        else
+        try {
+            Device device(dev);
+            if(device.getFileSystem() == "ext4")
+                watch_devices.insert(dev);
+            else
+            {
+                std::string dev_name = device.getDevicePath();
+                if(dev_name.at(0) != '/') //it's virtual fs: display mount point instead of cunfusing device name.
+                    dev_name = device.getMountPoint().string();
+                info("%s is not an ext4 filesystem", dev_name.c_str());
+                info("Filesystem of %s is %s", dev_name.c_str(), device.getFileSystem().c_str());
+                exclude_devices.insert(dev);
+                return true;
+            }
+        }
+        catch(std::exception& e)
         {
-            std::string dev_name = device.getDevicePath();
-            if(dev_name.at(0) != '/') //it's virtual fs: display mount point instead of cunfusing device name.
-                dev_name = device.getMountPoint().string();
-            info("%s is not an ext4 filesystem", dev_name.c_str());
-            info("Filesystem of %s is %s", dev_name.c_str(), device.getFileSystem().c_str());
+            error("%s", e.what());
             exclude_devices.insert(dev);
-            return true;
         }
     }
     return false;

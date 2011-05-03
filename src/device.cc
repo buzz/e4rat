@@ -177,73 +177,109 @@ std::string Device::getFileSystem()
  * convert dev_t to device string
  * Iterate over /dev directory
  */
-std::string Device::getDeviceName()
+void Device::getDevNameFromDevfs()
 {
-    if(get()->deviceName.empty())
+    struct stat st;
+    fs::directory_iterator end_itr; // default construction yields past-the-end
+    for ( fs::directory_iterator it("/dev");
+        it != end_itr;
+        ++it )
     {
-        struct stat st;
-        fs::directory_iterator end_itr; // default construction yields past-the-end
-        for ( fs::directory_iterator it("/dev");
-              it != end_itr;
-              ++it )
+        if(it->filename() == "root")
+            continue;
+        if(lstat(it->string().c_str(), &st))
+            continue;
+        if(st.st_rdev == get()->devno)
         {
-            if(it->filename() == "root")
-                continue;
-            if(lstat(it->string().c_str(), &st))
-                continue;
-            if(st.st_rdev == get()->devno)
-            {
-                get()->deviceName = it->filename();
-                get()->devicePath = "/dev/" + get()->deviceName;
-                break;
-            }
-        }
-
-        if(get()->deviceName.empty())
-        {
-            if(10 == get()->devno)
-            {
-                get()->deviceName = get()->devicePath = "/dev/pts";
-                goto out;
-            }
-            if(15 == get()->devno)
-            {
-                get()->deviceName = get()->devicePath = "/dev/shm";
-                goto out;
-            }
-            if(16 == get()->devno)
-            {
-                get()->deviceName = get()->devicePath = "nfs";
-                goto out;
-            }
-            
-            if(!stat("/proc", &st))
-                if(st.st_dev == get()->devno)
-                {
-                    get()->deviceName = get()->devicePath = "procfs";
-                    goto out;
-                }
-            if(!stat("/sys", &st))
-                if(st.st_dev == get()->devno)
-                {
-                    get()->deviceName = get()->devicePath = "sysfs";
-                    goto out;
-                }
-
-            if(!stat("/dev", &st))
-                if(st.st_dev == get()->devno)
-                {
-                    get()->deviceName = get()->devicePath = "devfs";
-                    goto out;
-                }
-            {
-                std::stringstream ss;
-                ss <<  "unknown devno " << get()->devno;
-                get()->deviceName = get()->devicePath = ss.str();
-            }
+            get()->deviceName = it->filename();
+            get()->devicePath = "/dev/" + get()->deviceName;
+            break;
         }
     }
-out:
+    if(get()->deviceName.empty())
+    {
+        if(10 == get()->devno)
+            get()->deviceName = get()->devicePath = "/dev/pts";
+        else if(15 == get()->devno)
+            get()->deviceName = get()->devicePath = "/dev/shm";
+        else if(16 == get()->devno)
+            get()->deviceName = get()->devicePath = "nfs";
+        
+        if(!stat("/proc", &st))
+            if(st.st_dev == get()->devno)
+            {
+                get()->deviceName = get()->devicePath = "procfs";
+                return;
+            }
+
+        if(!stat("/sys", &st))
+            if(st.st_dev == get()->devno)
+            {
+                get()->deviceName = get()->devicePath = "sysfs";
+                return;
+            }
+        
+        if(!stat("/dev", &st))
+
+            if(st.st_dev == get()->devno)
+            {
+                get()->deviceName = get()->devicePath = "devfs";
+                return;
+            }
+        
+        warn("Cannot find device name in /dev");
+    }
+}
+
+void Device::getDevNameFromMajorMinor()
+{
+    int major = major(get()->devno);
+    int minor = minor(get()->devno);
+
+    if(major == 8)
+        get()->deviceName = "sd";
+    else
+    {
+        error("Unknown device number %d:%d", major, minor);
+        return;
+    }
+    
+    char letter = 0x61 + (minor >>4);
+    char num    = 0x30 + (minor & 1111);
+    get()->deviceName += letter + num;
+    get()->devicePath = "/dev/" + get()->deviceName;
+}
+
+
+bool isMountPoint(fs::path p)
+{
+    struct stat st1, st2;
+    if(-1 == stat(p.string().c_str(), &st1)
+        || -1 == stat(p.parent_path().string().c_str(), &st2))
+        return false;
+
+    if(st1.st_dev == st2.st_dev)
+        return false;
+    else
+        return true;
+}
+
+/*
+ * Throw runtime_error on error
+ */
+std::string Device::getDeviceName()
+{
+    if(!isMountPoint("/dev"))
+    {
+        warn("devfs is not mounted");
+        getDevNameFromMajorMinor();
+    }
+    else
+        getDevNameFromDevfs();
+    
+    if(get()->deviceName.empty())
+        throw std::runtime_error("Unknown block device");
+
     return get()->deviceName;
 }
 
