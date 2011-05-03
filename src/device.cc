@@ -122,7 +122,13 @@ void Device::parseMtab()
     struct mntent   *mnt = NULL;
     struct stat st;
 
-    fmtab = setmntent(MOUNTED, "r");
+    if(access("/proc/mounts", R_OK))
+        fmtab = setmntent("/proc/mounts", "r");
+    else if(access(MOUNTED, R_OK))
+        fmtab = setmntent(MOUNTED, "r");
+    else
+        throw std::runtime_error("Cannot access either /proc/mounts or /etc/mtab");
+
     if(fmtab == NULL)
     {
         error("Cannot access %s: %s", MOUNTED, strerror(errno));
