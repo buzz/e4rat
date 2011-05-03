@@ -656,6 +656,7 @@ bool AuditListener::ignoreDevice(dev_t dev)
         {
             error("%s", e.what());
             exclude_devices.insert(dev);
+            return true;
         }
     }
     return false;

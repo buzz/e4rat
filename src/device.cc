@@ -118,22 +118,21 @@ Device::~Device()
 
 void Device::parseMtab()
 {
+    const char* path;
     FILE* fmtab;
     struct mntent   *mnt = NULL;
     struct stat st;
 
-    if(access("/proc/mounts", R_OK))
-        fmtab = setmntent("/proc/mounts", "r");
-    else if(access(MOUNTED, R_OK))
-        fmtab = setmntent(MOUNTED, "r");
+    if(0 ==access("/proc/mounts", R_OK))
+        path = "/proc/mounts";
+    else if(0 == access(MOUNTED, R_OK))
+        path = MOUNTED;
     else
-        throw std::runtime_error("Cannot access either /proc/mounts or /etc/mtab");
-
+        throw std::runtime_error("Neither /proc/mounts nor /etc/mtab is readable.");
+    
+    fmtab = setmntent(path, "r");
     if(fmtab == NULL)
-    {
-        error("Cannot access %s: %s", MOUNTED, strerror(errno));
-        return;
-    }
+        throw std::runtime_error(std::string("Cannot access ") + path + ": " + strerror(errno));
 
     while((mnt = getmntent(fmtab)) != NULL)
     {
@@ -203,57 +202,70 @@ void Device::getDevNameFromDevfs()
         }
     }
     if(get()->deviceName.empty())
-    {
-        if(10 == get()->devno)
-            get()->deviceName = get()->devicePath = "/dev/pts";
-        else if(15 == get()->devno)
-            get()->deviceName = get()->devicePath = "/dev/shm";
-        else if(16 == get()->devno)
-            get()->deviceName = get()->devicePath = "nfs";
-        
-        if(!stat("/proc", &st))
-            if(st.st_dev == get()->devno)
-            {
-                get()->deviceName = get()->devicePath = "procfs";
-                return;
-            }
-
-        if(!stat("/sys", &st))
-            if(st.st_dev == get()->devno)
-            {
-                get()->deviceName = get()->devicePath = "sysfs";
-                return;
-            }
-        
-        if(!stat("/dev", &st))
-
-            if(st.st_dev == get()->devno)
-            {
-                get()->deviceName = get()->devicePath = "devfs";
-                return;
-            }
-        
-        warn("Cannot find device name in /dev");
-    }
+        getDevNameFromMajorMinor();
 }
 
 void Device::getDevNameFromMajorMinor()
 {
+    char letter, num;
     int major = major(get()->devno);
     int minor = minor(get()->devno);
 
-    if(major == 8)
-        get()->deviceName = "sd";
-    else
+    switch(major)
     {
-        error("Unknown device number %d:%d", major, minor);
-        return;
+        case 0:
+            switch(minor)
+            {
+                case 3:
+                    get()->deviceName = get()->devicePath = "procfs"; break;                     
+                case 5:
+                    get()->deviceName = get()->devicePath = "devfs"; break; 
+                case 10:
+                    get()->deviceName = "pts"; goto out;
+                case 13:
+                    get()->deviceName = get()->devicePath = "sysfs"; break; 
+                case 15:
+                    get()->deviceName = "shm"; goto out;
+                case 16:
+                    get()->deviceName = get()->devicePath = "nfs"; break;
+                default:
+                    goto error;
+            }
+            return;
+        case 2:
+            get()->deviceName = "fd"; 
+            goto number_only;            
+        case 3:
+            get()->deviceName = "hd"; break;
+        case 8:
+            get()->deviceName = "sd"; break;
+        case 254:
+            get()->deviceName = "dm-"; 
+            goto number_only;
+        default:
+            goto error;
     }
     
-    char letter = 0x61 + (minor >>4);
-    char num    = 0x30 + (minor & 1111);
+    letter = 0x61 + (minor >>4);
+    num    = 0x30 + (minor & 1111);
     get()->deviceName += letter + num;
+    goto out;
+
+number_only:
+    num    = 0x30 + minor;
+    get()->deviceName += num;
+out:
     get()->devicePath = "/dev/" + get()->deviceName;
+    return;
+error:
+    {
+        std::stringstream ss;
+        ss << "Unknown device " << major << ":" << minor;
+        if(!get()->mount_point.empty())
+            ss << " mount point " << get()->mount_point.string();
+        throw std::runtime_error(ss.str());
+    }
+
 }
 
 
