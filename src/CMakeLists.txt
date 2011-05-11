@@ -11,6 +11,20 @@ else(CMAKE_SIZEOF_VOID_P MATCHES 4)
     SET(HAVE_64_BIT 1)
 endif(CMAKE_SIZEOF_VOID_P MATCHES 4)
 
+#TODO permit link dependencies not static
+#set(LINK_DEPENDENIES "static")
+
+if(NOT HAVE_64_BIT AND CMAKE_COMPILER_IS_GNUCXX)
+    execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
+                OUTPUT_VARIABLE GCC_VERSION)
+
+    if(GCC_VERSION VERSION_LESS 4.5)
+        message(WARNING "GCC >4.5 does not support -static-libstdc++")
+        message(WARNING "Generate libe4rat-core as static library")
+        SET(HAVE_64_BIT 1)
+    endif(GCC_VERSION VERSION_LESS 4.5)
+endif(NOT HAVE_64_BIT AND CMAKE_COMPILER_IS_GNUCXX)
+
 add_definitions(-Wall)
 add_definitions(-DPROGRAM_NAME=\"${PROJECT_NAME}\")
 add_definitions(-DVERSION=\"${E4RAT_VERSION}\")
