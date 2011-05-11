@@ -6,24 +6,24 @@ IF( NOT CMAKE_BUILD_TYPE )
 ENDIF()
 
 if(CMAKE_SIZEOF_VOID_P MATCHES 4)
-    SET(HAVE_64_BIT 0)
+    SET(BUILD_CORE_LIBRARY_STATIC 0)
 else(CMAKE_SIZEOF_VOID_P MATCHES 4)
-    SET(HAVE_64_BIT 1)
+    SET(BUILD_CORE_LIBRARY_STATIC 1)
 endif(CMAKE_SIZEOF_VOID_P MATCHES 4)
 
 #TODO permit link dependencies not static
 #set(LINK_DEPENDENIES "static")
 
-if(NOT HAVE_64_BIT AND CMAKE_COMPILER_IS_GNUCXX)
+if(NOT BUILD_CORE_LIBRARY_STATIC AND CMAKE_COMPILER_IS_GNUCXX)
     execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
                 OUTPUT_VARIABLE GCC_VERSION)
 
     if(GCC_VERSION VERSION_LESS 4.5)
         message(WARNING "GCC >4.5 does not support -static-libstdc++")
         message(WARNING "Generate libe4rat-core as static library")
-        SET(HAVE_64_BIT 1)
+        SET(BUILD_CORE_LIBRARY_STATIC 1)
     endif(GCC_VERSION VERSION_LESS 4.5)
-endif(NOT HAVE_64_BIT AND CMAKE_COMPILER_IS_GNUCXX)
+endif(NOT BUILD_CORE_LIBRARY_STATIC AND CMAKE_COMPILER_IS_GNUCXX)
 
 add_definitions(-Wall)
 add_definitions(-DPROGRAM_NAME=\"${PROJECT_NAME}\")
@@ -128,11 +128,11 @@ ENDIF(CMAKE_BUILD_TYPE STREQUAL "debug")
 
 # On 64 bit architecture you cannot link a static to a shared library
 # Therefore -static-libstdc++ will fail.
-if(HAVE_64_BIT)
+if(BUILD_CORE_LIBRARY_STATIC)
     add_library(${PROJECT_NAME}-core STATIC
         ${${PROJECT_NAME}-core_SRC}
     )
-else(HAVE_64_BIT)
+else(BUILD_CORE_LIBRARY_STATIC)
     add_library(${PROJECT_NAME}-core SHARED
         ${${PROJECT_NAME}-core_SRC}
     )
@@ -140,7 +140,7 @@ else(HAVE_64_BIT)
         SOVERSION   0
         LINK_FLAGS  "-static-libgcc -static-libstdc++"
     )
-endif(HAVE_64_BIT)
+endif(BUILD_CORE_LIBRARY_STATIC)
 
 target_link_libraries(${PROJECT_NAME}-core
         ${${PROJECT_NAME}_LIBRARIES}
@@ -167,12 +167,12 @@ set(${PROJECT_NAME}_TARGETS
     ${PROJECT_NAME}-realloc
 )
 
-if(NOT HAVE_64_BIT)
+if(NOT BUILD_CORE_LIBRARY_STATIC)
     set(${PROJECT_NAME}_TARGETS 
         ${${PROJECT_NAME}_TARGETS}
         ${PROJECT_NAME}-core
     )
-endif(NOT HAVE_64_BIT)
+endif(NOT BUILD_CORE_LIBRARY_STATIC)
 
 INSTALL(TARGETS ${${PROJECT_NAME}_TARGETS}
         RUNTIME DESTINATION "sbin"
