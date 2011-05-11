@@ -108,6 +108,7 @@ class Device: private boost::shared_ptr<DevicePrivate>
         void getDevNameFromDevfs();
         void getDevNameFromMajorMinor();
         void parseMtab();
+        void parseMtabFile(const char* path);
         void openSysFsExt4File(
                         std::filebuf* fb,
                         std::string filename,

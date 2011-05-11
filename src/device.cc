@@ -116,20 +116,12 @@ Device::Device(dev_t dev)
 Device::~Device()
 {}
 
-void Device::parseMtab()
+void Device::parseMtabFile(const char* path)
 {
-    const char* path;
     FILE* fmtab;
     struct mntent   *mnt = NULL;
     struct stat st;
-
-    if(0 ==access("/proc/mounts", R_OK))
-        path = "/proc/mounts";
-    else if(0 == access(MOUNTED, R_OK))
-        path = MOUNTED;
-    else
-        throw std::runtime_error("Neither /proc/mounts nor /etc/mtab is readable.");
-    
+   
     fmtab = setmntent(path, "r");
     if(fmtab == NULL)
         throw std::runtime_error(std::string("Cannot access ") + path + ": " + strerror(errno));
@@ -151,10 +143,26 @@ void Device::parseMtab()
     endmntent(fmtab);
 }
 
+void Device::parseMtab()
+{
+    if(0 ==access("/proc/mounts", R_OK))
+    {
+        parseMtabFile("/proc/mounts");
+        if( get()->fs_name == "ext2")
+            // maybe /proc/mounts is not up to date cause user forget to setup 
+            // rootfstype=ext4 to kernel parameters.
+            parseMtabFile(MOUNTED);
+    }
+    else if(0 == access(MOUNTED, R_OK))
+        parseMtabFile(MOUNTED);
+    else
+        throw std::runtime_error("Neither /proc/mounts nor /etc/mtab is readable.");
+}
 fs::path Device::getMountPoint()
 {
     if(get()->mount_point.empty())
         parseMtab();
+    
     return get()->mount_point;
 }
 
