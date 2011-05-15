@@ -56,7 +56,6 @@ The e4rat toolset has the following external dependencies:
  - Boost Library (>=1.41): You need the following components installed:
        system, filesytem, regex, signals2
  - Linux Audit Library (libaudit >=0.1.7)
- - Block Device Identification Library (libblkid)
  - Ext2 File System Utilities (e2fsprogs)
 
 BUILDING
