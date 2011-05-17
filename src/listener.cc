@@ -226,7 +226,7 @@ void AuditListener::insertAuditRules()
 
     struct utsname uts;
     if(-1 == uname(&uts))
-        throw std::logic_error(std::string("Cannot receive machine hardware name") + strerror(errno));
+        throw std::logic_error(std::string("Cannot receive machine hardware name: ") + strerror(errno));
 
     if(0 == strcmp(uts.machine, "x86_64"))
     {
