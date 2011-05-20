@@ -14,16 +14,19 @@ endif(CMAKE_SIZEOF_VOID_P MATCHES 4)
 #TODO permit link dependencies not static
 #set(LINK_DEPENDENIES "static")
 
-if(NOT BUILD_CORE_LIBRARY_STATIC AND CMAKE_COMPILER_IS_GNUCXX)
+if(CMAKE_COMPILER_IS_GNUCXX)
     execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
                 OUTPUT_VARIABLE GCC_VERSION)
 
     if(GCC_VERSION VERSION_LESS 4.5)
         message(WARNING "GCC >4.5 does not support -static-libstdc++")
-        message(WARNING "Generate libe4rat-core as static library")
-        SET(BUILD_CORE_LIBRARY_STATIC 1)
+	execute_process(COMMAND test `stat -c %d /` -ne `stat -c %d /usr`
+                        OUTPUT_VARIABLE DIR_USR_INACCESSIBLE_DURING_BOOT)
+        if(DIR_USR_INACCESSIBLE_DURING_BOOT)
+            message(FATAL "/usr directory is not located on root device")
+        endif(DIR_USR_INACCESSIBLE_DURING_BOOT)
     endif(GCC_VERSION VERSION_LESS 4.5)
-endif(NOT BUILD_CORE_LIBRARY_STATIC AND CMAKE_COMPILER_IS_GNUCXX)
+endif(CMAKE_COMPILER_IS_GNUCXX)
 
 add_definitions(-Wall)
 add_definitions(-DPROGRAM_NAME=\"${PROJECT_NAME}\")
