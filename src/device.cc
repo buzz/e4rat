@@ -113,9 +113,6 @@ Device::Device(dev_t dev)
     get()->devno = dev;
 }
 
-Device::~Device()
-{}
-
 void Device::parseMtabFile(const char* path)
 {
     FILE* fmtab;
@@ -348,10 +345,10 @@ bool Device::hasExtentFeature()
  * without a limitation in block len
  */ 
 void Device::preallocate(int   fd,
-             __u64 physical,
-             __u32 logical,
-             __u32 len,
-             __u16 flags)
+                         __u64 physical,
+                         __u32 logical,
+                         __u32 len,
+                         __u16 flags)
 {
     for(__u64 done = 0; done < len && !(flags & EXT4_MB_DISCARD_PA);)
     {

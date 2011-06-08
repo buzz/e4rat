@@ -77,7 +77,6 @@ class Device: private boost::shared_ptr<DevicePrivate>
         //it is not the path to the device themself
         Device(fs::path file);
         Device(dev_t);
-        ~Device();
         bool open();
         std::string getDeviceName();
         std::string getDevicePath();
