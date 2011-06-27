@@ -372,33 +372,25 @@ void AuditListener::waitForEvent(struct audit_reply* reply)
     fd_set read_mask;
     struct timeval tv;
     int    retval;
-    int    err_counter = 0;
 
 repeat:
     do {
-        // TODO: very slow due quitting. Need another
-        //       opportunity to awake while sleeping
-
         interruptionPoint();
 
-        tv.tv_sec = 2;
+        tv.tv_sec = 60;
         tv.tv_usec = 0;
         FD_ZERO(&read_mask);
         FD_SET(audit_fd, &read_mask);
 
         retval = select(audit_fd+1, &read_mask, NULL, NULL, &tv);
 
-        /*
-         * Check occasionally the state of the netlink socket.
-         * If no valid date is received over a long time, some
-         * other process may have captured the session.
-         */
         if(retval == 0)
-            if(++err_counter > 5)
-            {
-                audit_request_status(audit_fd);
-                err_counter = 0;
-            }
+            /*
+             * Timeout received.
+             * This occurs when another process captured the audit socket session.
+             * Request status to find out the audit session owner.
+             */
+            audit_request_status(audit_fd);
         
     } while (retval == -1 && errno == EINTR);
 
