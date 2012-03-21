@@ -189,8 +189,9 @@ std::string Device::getFileSystem()
 /*
  * convert dev_t to device string
  * Iterate over /dev directory
+ * return 0 on success otherwise -1
  */
-void Device::getDevNameFromDevfs()
+int Device::getDevNameFromDevfs()
 {
     struct stat st;
     fs::directory_iterator end_itr; // default construction yields past-the-end
@@ -206,14 +207,16 @@ void Device::getDevNameFromDevfs()
         {
             get()->deviceName = it->filename();
             get()->devicePath = "/dev/" + get()->deviceName;
-            break;
+            return 0;
         }
     }
-    if(get()->deviceName.empty())
-        getDevNameFromMajorMinor();
+    return -1;
 }
 
-void Device::getDevNameFromMajorMinor()
+/*
+ * return 0 success otherwise -1
+ */
+int Device::getDevNameFromMajorMinor()
 {
     char letter, num;
     int major = major(get()->devno);
@@ -222,24 +225,11 @@ void Device::getDevNameFromMajorMinor()
     switch(major)
     {
         case 0:
-            switch(minor)
-            {
-                case 3:
-                    get()->deviceName = get()->devicePath = "procfs"; break;                     
-                case 5:
-                    get()->deviceName = get()->devicePath = "devfs"; break; 
-                case 10:
-                    get()->deviceName = "pts"; goto out;
-                case 13:
-                    get()->deviceName = get()->devicePath = "sysfs"; break; 
-                case 15:
-                    get()->deviceName = "shm"; goto out;
-                case 16:
-                    get()->deviceName = get()->devicePath = "nfs"; break;
-                default:
-                    goto error;
-            }
-            return;
+            // the minor number of virtual filesystems are allocated dynamically in function set_anon_super() in fs/super.c
+            // for convenience set deviceName and devicePath to a common name
+            get()->deviceName = "virtual file system";
+            get()->devicePath = get()->mount_point.filename();
+            return 0;
         case 2:
             get()->deviceName = "fd"; 
             goto number_only;            
@@ -251,7 +241,7 @@ void Device::getDevNameFromMajorMinor()
             get()->deviceName = "dm-"; 
             goto number_only;
         default:
-            goto error;
+            return -1;
     }
     
     letter = 0x61 + (minor >>4);
@@ -264,16 +254,7 @@ number_only:
     get()->deviceName += num;
 out:
     get()->devicePath = "/dev/" + get()->deviceName;
-    return;
-error:
-    {
-        std::stringstream ss;
-        ss << "Unknown device " << major << ":" << minor;
-        if(!get()->mount_point.empty())
-            ss << " mount point " << get()->mount_point.string();
-        throw std::runtime_error(ss.str());
-    }
-
+    return 0;
 }
 
 
@@ -295,17 +276,15 @@ bool isMountPoint(fs::path p)
  */
 std::string Device::getDeviceName()
 {
-    if(!isMountPoint("/dev"))
+    if(-1 == getDevNameFromMajorMinor())
     {
-        warn("devfs is not mounted");
-        getDevNameFromMajorMinor();
+        if(!isMountPoint("/dev"))
+            throw std::runtime_error("Unknown block device: devfs is not mounted");
+        
+        if(-1 == getDevNameFromDevfs())
+            throw std::runtime_error("Unknown block device: no such device found in /dev");
     }
-    else
-        getDevNameFromDevfs();
     
-    if(get()->deviceName.empty())
-        throw std::runtime_error("Unknown block device");
-
     return get()->deviceName;
 }
 

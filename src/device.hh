@@ -105,8 +105,8 @@ class Device: private boost::shared_ptr<DevicePrivate>
                          __u64 len);     //block count to be moved
         bool operator<(const Device&) const;
     private:
-        void getDevNameFromDevfs();
-        void getDevNameFromMajorMinor();
+        int getDevNameFromDevfs();
+        int getDevNameFromMajorMinor();
         void parseMtab();
         void parseMtabFile(const char* path);
         void openSysFsExt4File(
