@@ -55,13 +55,12 @@ SET(CPACK_PACKAGE_FILE_NAME
     	${CPACK_PACKAGE_FILE_NAME}_invalid-prefix)
 endif(NOT CPACK_INSTALL_PREFIX STREQUAL CMAKE_INSTALL_PREFIX)
 
-SET (CPACK_PACKAGE_CONTACT "Andreas Rid <conso@rz.fh-augsburg.de>")
 SET (CPACK_PACKAGE_DESCRIPTION_SUMMARY
         "Reduce disk access time on ext4 filesystems through relevant file defragmentation.")
-#SET (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ReadMe.txt")
-SET (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-SET (CPACK_DEBIAN_PACKAGE_SECTION "extra")
-SET (CPACK_DEBIAN_PACKAGE_MAINTAINER "Andreas Rid")
+SET (CPACK_PACKAGE_CONTACT              "Andreas Rid <conso@rz.fh-augsburg.de>")
+SET (CPACK_RESOURCE_FILE_LICENSE        "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+SET (CPACK_DEBIAN_PACKAGE_SECTION       "extra")
+SET (CPACK_DEBIAN_PACKAGE_MAINTAINER    "Andreas Rid")
 set (CPACK_SET_DESTDIR                  "ON") # Necessary because of the absolute install paths
 
 # extra install and uninstall create subfolders
@@ -71,10 +70,7 @@ set( CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
         "${CMAKE_CURRENT_SOURCE_DIR}/debian/postrm")
 
 SET (CPACK_DEBIAN_PACKAGE_DEPENDS
-        "libblkid1")
-
-SET (CPACK_DEBIAN_PACKAGE_DEPENDS
-        "${CPACK_DEBIAN_PACKAGE_DEPENDS}, e2fslibs (>=1.41)")
+        "e2fslibs (>=1.41)")
 
 SET (CPACK_DEBIAN_PACKAGE_CONFLICTS
         "auditd, ureadahead")
