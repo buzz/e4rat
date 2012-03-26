@@ -45,10 +45,7 @@ set( CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
 SET (CPACK_INSTALL_PREFIX "/usr")
 
 SET (CPACK_DEBIAN_PACKAGE_DEPENDS
-        "libboost-date-time${Boost_VERSION_STR} (>=1.41)")
-
-SET (CPACK_DEBIAN_PACKAGE_DEPENDS
-        "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libboost-filesystem${Boost_VERSION_STR} (>=1.41)")
+        "libboost-filesystem${Boost_VERSION_STR} (>=1.41)")
 
 SET (CPACK_DEBIAN_PACKAGE_DEPENDS
         "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libboost-regex${Boost_VERSION_STR} (>=1.41)")
