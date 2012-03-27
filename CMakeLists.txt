@@ -57,7 +57,7 @@ endif(NOT CPACK_INSTALL_PREFIX STREQUAL CMAKE_INSTALL_PREFIX)
 
 SET (CPACK_PACKAGE_DESCRIPTION_SUMMARY
         "Reduce disk access time on ext4 filesystems through relevant file defragmentation.")
-SET (CPACK_PACKAGE_CONTACT              "Andreas Rid <conso@rz.fh-augsburg.de>")
+SET (CPACK_PACKAGE_CONTACT              "Andreas Rid <conso@users.sf.net>")
 SET (CPACK_RESOURCE_FILE_LICENSE        "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 SET (CPACK_DEBIAN_PACKAGE_SECTION       "extra")
 SET (CPACK_DEBIAN_PACKAGE_MAINTAINER    "Andreas Rid")
