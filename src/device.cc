@@ -243,7 +243,7 @@ int Device::getDevNameFromMajorMinor()
     
     letter = 0x61 + (minor >>4);
     num    = 0x30 + (minor & 1111);
-    get()->deviceName += letter + num;
+    get()->deviceName = get()->deviceName + letter + num;
     goto out;
 
 number_only:
