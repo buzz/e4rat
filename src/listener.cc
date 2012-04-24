@@ -646,9 +646,9 @@ bool AuditListener::ignoreDevice(dev_t dev)
         }
         catch(std::exception& e)
         {
-            error("%s", e.what());
-            exclude_devices.insert(dev);
-            return true;
+            // Damn! Keep going. We can drop this file later.
+            info("%s", e.what());
+            return false;
         }
     }
     return false;
