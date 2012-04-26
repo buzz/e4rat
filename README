@@ -66,11 +66,9 @@ To build the release version of e4rat run the following command:
     cmake . -DCMAKE_BUILD_TYPE=release
     make
 
-The default install prefix of e4rat is '/'. To use a different one 
-add the command line parameter to
-cmake as follow:
-    cmake . -DCMAKE_INSTALL_PREFIX=/opt -DCMAKE_BUILD_TYPE=release
-
+Additianal cmake options:
+ CMAKE_INSTALL_PREFIX=<prefix>
+ 
 Once you have successfully built the source code install e4rat as root:
     make install
 
@@ -79,6 +77,26 @@ generating a Debian package:
     make package
     dpkg -i e4rat_<version>_<arch>.deb
 
+ADDITIONAL CMAKE OPTIONS:
+-------------------------
+
+CMAKE_INSTALL_PREFIX=<prefix>
+    install files in <prefix>. When you run make install, libraries will
+    be placed in <prefix>/lib, executables in <prefix>/bin, and so on.
+
+    The default is / if this argument is not passed to cmake.
+
+BUILD_CORE_LIBRARY_STATIC=<true|false>
+    set to 'true' to build libe4rat-core library statically. Please not 
+    that linking statically increase the file size.
+
+    On 64-bit systems the default is set to 'true' otherwise 'false'.
+
+CMAKE_BUILD_TYPE=<release|debug>
+    specify build type. Choose either 'debug' or 'release'. The debug
+    version is build with debug info.
+
+    The default is 'debug' if this argument is not passed to cmake.
 
 AUTHORS
 -------
