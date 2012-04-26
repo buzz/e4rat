@@ -215,7 +215,7 @@ int Device::getDevNameFromDevfs()
  */
 int Device::getDevNameFromMajorMinor()
 {
-    char letter, num;
+    std::stringstream ss;
     int major = major(get()->devno);
     int minor = minor(get()->devno);
 
@@ -228,28 +228,25 @@ int Device::getDevNameFromMajorMinor()
             get()->devicePath = get()->mount_point.filename();
             return 0;
         case 2:
-            get()->deviceName = "fd"; 
-            goto number_only;            
+            ss << "fd"; 
+            goto devicename_has_no_letter;            
         case 3:
-            get()->deviceName = "hd"; break;
+            ss << "hd"; break;
         case 8:
-            get()->deviceName = "sd"; break;
+            ss << "sd"; break;
         case 254:
-            get()->deviceName = "dm-"; 
-            goto number_only;
+            ss << "dm-"; 
+            goto devicename_has_no_letter;
         default:
             return -1;
     }
     
-    letter = 0x61 + (minor >>4);
-    num    = 0x30 + (minor & 1111);
-    get()->deviceName = get()->deviceName + letter + num;
-    goto out;
+    ss << (char)(0x61 + (minor >>4));
 
-number_only:
-    num    = 0x30 + minor;
-    get()->deviceName += num;
-out:
+devicename_has_no_letter:
+    ss << (minor & 0b1111);
+
+    get()->deviceName = ss.str();
     get()->devicePath = "/dev/" + get()->deviceName;
     return 0;
 }
