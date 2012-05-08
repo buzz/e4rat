@@ -826,9 +826,9 @@ void Defrag::createDonorFiles_TLD(Device& device,
                 continue;
             
             interruptionPoint();
-            
+            std::string tmpFile;
             try {
-                std::string tmpFile = createTempFile(tld, 
+                tmpFile = createTempFile(tld, 
                                            odp.blocks * device.getBlockSize());
 
                 // Once we created all donor files we will remove our top level
@@ -837,7 +837,12 @@ void Defrag::createDonorFiles_TLD(Device& device,
             }
             catch(std::runtime_error& e)
             {
-                warn("%s", e.what());
+                if(-1 == remove(tmpFile.c_str()))
+                    if(errno != ENOENT)
+                        error("Cannot remove temp file: %s: %s",
+                              tmpFile.c_str(), strerror(errno));
+                
+                throw;
             }
         }
         
