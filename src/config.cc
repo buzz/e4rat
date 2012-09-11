@@ -71,7 +71,7 @@ Config::Config()
         return;
     }
     
-    tool_name = fs::path(argv[0]).filename();
+    tool_name = fs::path(argv[0]).filename().string();
     found = tool_name.find_last_of("-");
     if(found)
         defaultSection = tool_name.substr(found+1);
