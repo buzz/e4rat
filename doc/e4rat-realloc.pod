@@ -89,4 +89,4 @@ Report bugs to Andreas Rid <conso at users.sf.net>.
 
 =head1 SEE ALSO
 
-e4rat-collect(8), e4rat-preload(8), e4rat.conf(8)
+e4rat-collect(8), e4rat-preload(8), e4rat.conf(5)
