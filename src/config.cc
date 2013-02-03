@@ -29,7 +29,7 @@
 
 DEFINE_SINGLETON(Config);
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-char** get_argv()
+static const char** get_argv()
 {
     char** ptr = environ;
     ptr--;
@@ -37,7 +37,7 @@ char** get_argv()
         // Assumption argument strings does not have a leading '\0' character.
         // Therefore ptr points to argc.
         if(*(unsigned int*)ptr < 0x00FFFFFF)
-            return ++ptr;
+            return (const char**)++ptr;
     return 0;
 }
 #else
@@ -64,7 +64,7 @@ Config::Config()
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     size_t found;
-    char**argv = get_argv();
+    const char**argv = get_argv();
     if(argv == NULL)
     {
         fprintf(stderr, "Cannot get argv arguments\n");
