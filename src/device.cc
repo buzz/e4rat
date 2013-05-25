@@ -196,14 +196,14 @@ int Device::getDevNameFromDevfs()
         it != end_itr;
         ++it )
     {
-        if(it->path().string() == "root")
+        if(it->path().string() == "/dev/root")
             continue;
         if(lstat(it->path().string().c_str(), &st))
             continue;
         if(st.st_rdev == get()->devno)
         {
-            get()->deviceName = it->path().string();
-            get()->devicePath = "/dev/" + get()->deviceName;
+            get()->devicePath = it->path().string();
+            get()->deviceName = it->path().filename().string();
             return 0;
         }
     }
