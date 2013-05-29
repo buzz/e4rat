@@ -166,7 +166,7 @@ std::vector<std::string> matchPath( const std::string & filesearch )
              it!=boost::filesystem::directory_iterator();
              ++it )
         {
-            if( boost::regex_match( it->path().string(), path2regex(f) ) )
+            if( boost::regex_match( it->path().filename().string(), path2regex(f) ) )
                 fileset.push_back(it->path().string());
         }
     return fileset;
