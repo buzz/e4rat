@@ -200,7 +200,7 @@ int Device::getDevNameFromDevfs()
             continue;
         if(lstat(it->path().string().c_str(), &st))
             continue;
-        if(st.st_rdev == get()->devno)
+        if(st.st_rdev == get()->devno && S_ISBLK(st.st_mode))
         {
             get()->devicePath = it->path().string();
             get()->deviceName = it->path().filename().string();
