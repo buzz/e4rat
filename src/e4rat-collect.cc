@@ -84,8 +84,10 @@ int system_u(const char* user, const char* command)
                     exit(1);
                 }
                 setenv("HOME", pw->pw_dir, 1);
-                setuid(pw->pw_uid);
-                setgid(pw->pw_gid);
+                if(setuid(pw->pw_uid))
+                    error("Cannot set user id %d: %s", pw->pw_uid, strerror(errno));
+                if(setgid(pw->pw_gid))
+                    error("Cannot set group id %d: %s", pw->pw_gid, strerror(errno));
             }
             
             execl("/bin/sh", "/bin/sh", "-c", command, NULL);
